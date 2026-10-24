@@ -180,7 +180,11 @@ public struct JournalRecord: Codable, Sendable, Hashable {
 /// T-10): worker pool N=4, per-item transactions, pause semaphore, cancel via
 /// `Task.cancel` + temp cleanup.
 public protocol OperationExecutorProtocol: Actor {
-    func enqueue(_ plan: TransferPlan, policy: ConflictPolicy) -> AsyncStream<TransferEvent>
+    /// Returns the operation handle (for pause/resume/cancel) together with
+    /// its event stream. Contract refinement T-10: the original §5.6 sketch
+    /// returned only the stream, leaving the caller no way to address the
+    /// operation afterwards (docs/SDD/12 «Уточнение T-10»).
+    func enqueue(_ plan: TransferPlan, policy: ConflictPolicy) async -> (id: OperationID, events: AsyncStream<TransferEvent>)
     func pause(_ id: OperationID) async
     func resume(_ id: OperationID) async
     func cancel(_ id: OperationID) async

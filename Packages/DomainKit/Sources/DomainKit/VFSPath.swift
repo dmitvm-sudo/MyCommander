@@ -83,4 +83,33 @@ public struct VFSPath: Hashable, Codable, Sendable {
         else { return "unknown" }
         return uuid
     }
+
+    /// Child path (FileOpsKit planner, T-10). `displayURL` extends when known.
+    public func appending(component: String) -> VFSPath {
+        VFSPath(
+            root: root,
+            components: components + [component],
+            displayURL: displayURL?.appendingPathComponent(component, isDirectory: false)
+        )
+    }
+
+    /// Parent path; the root has no parent (returns itself).
+    public var parent: VFSPath {
+        guard !components.isEmpty else { return self }
+        return VFSPath(root: root, components: Array(components.dropLast()), displayURL: displayURL?.deletingLastPathComponent())
+    }
+
+    /// Name without the extension («report.txt» → «report»); dotted names like
+    /// «.gitignore» keep their full name as stem (Foundation semantics).
+    public var stem: String {
+        guard let base = components.last else { return "" }
+        let ext = (base as NSString).pathExtension
+        guard !ext.isEmpty else { return base }
+        return String(base.dropLast(ext.count + 1))
+    }
+
+    /// Extension without the dot («report.txt» → «txt»).
+    public var pathExtension: String {
+        (components.last as NSString?)?.pathExtension ?? ""
+    }
 }

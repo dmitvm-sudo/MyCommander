@@ -348,6 +348,14 @@ public final class LocalVFS: VFS, @unchecked Sendable {
 
     // MARK: private plumbing
 
+    /// Resolves a VFS path of this instance to a file URL (local fast paths:
+    /// APFS clonefile / fcopyfile in FileOpsKit, docs/SDD/06 §6.2). Paths of
+    /// other instances are a programming error — precondition.
+    public func url(for path: VFSPath) -> URL {
+        precondition(path.root == id, "path belongs to another instance")
+        return resolveURL(path)
+    }
+
     private func checkOwn(_ path: VFSPath) throws {
         guard path.root == id else { throw MCError.vfsUnsupported(id, "path belongs to another instance") }
     }

@@ -95,10 +95,13 @@ enum PanelKeys {
         }
 
         // Type-to-filter (F-10): every remaining printable keystroke feeds the
-        // quick filter (Space stays a selection key per F-3).
+        // quick filter (Space stays a selection key per F-3). Private-use
+        // scalars (F1–F12 arrive as 0xF704… in `characters`) are not text —
+        // they belong to the keymap layer, not the filter.
         if modifiers.isEmpty, let characters,
            let character = characters.first,
-           character != " ", character.unicodeScalars.allSatisfy({ $0.value >= 0x20 })
+           character != " ",
+           character.unicodeScalars.allSatisfy({ $0.value >= 0x20 && $0.value < 0xE000 })
         {
             return .filterCharacter(character)
         }

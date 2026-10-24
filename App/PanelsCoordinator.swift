@@ -2,6 +2,7 @@
 
 import AppKit
 import DomainKit
+import FileOpsKit
 import ListViewKit
 import ServicesKit
 import VFSKit
@@ -33,6 +34,13 @@ final class PanelsCoordinator: NSObject {
     /// Session persistence (F-2: tabs survive relaunch).
     private let sessionStore: SessionStore
 
+    /// Operations engine (F-5, T-10): one executor for the shared local VFS;
+    /// per-adapter executors arrive with the VFSRegistry task.
+    private let transferJournal = JournalStorage()
+    private let transferEvents = TransferEvents()
+    private var operationExecutor: OperationExecutor!
+    private var progressWindow: ProgressWindowController?
+
     private var homePath: VFSPath {
         VFSPath.local(URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true))
     }
@@ -44,7 +52,6 @@ final class PanelsCoordinator: NSObject {
         self.sessionStore = SessionStore()
         self.keymapStore = KeymapStore(defaultProfiles: Self.bundledKeymapProfiles())
         super.init()
-
         // F-2: the tab stacks survive relaunch; a missing/foreign session falls
         // back to one home tab per panel.
         if !restoreSession() {
@@ -60,6 +67,12 @@ final class PanelsCoordinator: NSObject {
         rightPane.fileListView.onActivated = { [weak self] in self?.focus.activate(.right) }
         focus.onFocusChanged = { [weak self] side in self?.applyFocus(side) }
 
+        operationExecutor = OperationExecutor(
+            source: fileSystem,
+            destination: fileSystem,
+            journal: transferJournal,
+            events: transferEvents
+        )
         registerCommandHandlers()
     }
 
@@ -252,6 +265,65 @@ final class PanelsCoordinator: NSObject {
         router.register(.deselectMasked) { [weak self] in
             self?.beginMaskDialog(deselecting: true)
         }
+
+        // Operations (F-5 core, T-10): copy from the active pane into the
+        // opposite pane (TC semantics), progress window observes the events.
+        router.register(.copyFiles) { [weak self] in
+            self?.beginCopyToOppositePane()
+        }
+    }
+
+    private var oppositePane: PanelViewController? {
+        focus.activePanel == .left ? rightPane : leftPane
+    }
+
+    /// F-5: copy the effective selection of the active pane into the other
+    /// pane's current directory; conflicts default to «keep both» (auto-suffix)
+    /// until the T-12 conflict dialog lands.
+    private func beginCopyToOppositePane() {
+        guard let sourcePane = activePane, let destinationPane = oppositePane,
+              let target = destinationPane.fileListView.viewModel.path
+        else { return }
+        let viewModel = sourcePane.fileListView.viewModel
+        let selection = viewModel.effectiveSelection
+        guard !selection.isEmpty else { return }
+        let sources = (0 ..< viewModel.visibleCount)
+            .compactMap { viewModel.item(atVisibleIndex: $0) }
+            .filter { selection.contains($0.id) }
+            .map(\.id)
+        guard !sources.isEmpty else { return }
+
+        Task {
+            do {
+                let plan = try await TransferPlanner.planCopy(
+                    sources: sources,
+                    into: target,
+                    source: viewModel.source,
+                    destination: destinationPane.fileListView.viewModel.source
+                )
+                guard !plan.items.isEmpty else { return }
+                let (id, stream) = await operationExecutor.enqueue(
+                    plan,
+                    policy: ConflictPolicy(defaultResolution: .keepBoth)
+                )
+                showProgress(id: id, operation: stream, itemCount: plan.items.count)
+            } catch let error as MCError {
+                _ = error   // status-line surfacing arrives with T-12 UX pass
+            } catch {
+                _ = error
+            }
+        }
+    }
+
+    private func showProgress(id: OperationID, operation stream: AsyncStream<TransferEvent>, itemCount: Int) {
+        let window = ProgressWindowController(
+            id: id,
+            events: stream,
+            executor: operationExecutor,
+            itemCount: itemCount
+        )
+        progressWindow = window
+        window.window?.makeKeyAndOrderFront(nil)
     }
 
     private func swapPanels() {

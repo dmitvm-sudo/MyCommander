@@ -137,7 +137,7 @@ struct TransferEvent: Sendable {
 }
 
 actor OperationExecutorProtocol {
-    func enqueue(_ plan: TransferPlan, policy: ConflictPolicy) -> AsyncStream<TransferEvent>
+    func enqueue(_ plan: TransferPlan, policy: ConflictPolicy) async -> (id: OperationID, events: AsyncStream<TransferEvent>)
     func pause(_ id: OperationID) / resume / cancel
 }
 ```
