@@ -11,6 +11,21 @@ import DomainKit
 // the source object is created inside it (`target/<source.name>`) — two-panel copy.
 // Existing file target → `MCError.transferConflict`; existing directory target merges.
 
+/// Operation names for fault injection (docs/SDD/12 T-04: «InMemoryVFS errno-инъекция»;
+/// consumable from T-11 trouble-matrix tests and later integration suites).
+public enum VFSOperation: Sendable, Hashable, CaseIterable {
+    case listDirectory
+    case metadata
+    case directorySize
+    case createDirectory
+    case rename
+    case delete
+    case copyContents
+    case openRead
+    case openWrite
+    case setAttributes
+}
+
 public final class InMemoryVFS: VFS, @unchecked Sendable {
     final class FileContent {
         var data: Data
@@ -32,14 +47,35 @@ public final class InMemoryVFS: VFS, @unchecked Sendable {
     /// Staged-but-unfinished writers (temp slots, one per openWrite call).
     private var openWriters: Set<[String]> = []
     private var revisionCounter: UInt64 = 1
+    /// Fault injection state: throw `error` from every listed operation (nil = clean).
+    private var injection: (error: MCError, operations: Set<VFSOperation>)?
 
     public init(name: String = "default") {
         self.id = VFSInstanceID(kind: .localDisk, credentialRef: nil, specID: "inmemory:" + name)
     }
 
+    /// Injects a failure for the given operations; `operations == nil` means «all».
+    /// `error: nil` clears the injection back to a healthy fake.
+    public func injectFailure(_ error: MCError?, for operations: Set<VFSOperation>? = nil) {
+        withLock {
+            if let error {
+                injection = (error, operations ?? Set(VFSOperation.allCases))
+            } else {
+                injection = nil
+            }
+        }
+    }
+
+    private func checkInjection(_ operation: VFSOperation) throws {
+        let current = withLock { injection }
+        guard let current, current.operations.contains(operation) else { return }
+        throw current.error
+    }
+
     // MARK: §5.3 listing and metadata
 
     public func listDirectory(at path: VFSPath) async throws -> [VFSItem] {
+        try checkInjection(.listDirectory)
         try checkOwn(path)
         let key = key(of: path)
         return try withLock { try listDirectoryLocked(key: key) }
@@ -51,7 +87,7 @@ public final class InMemoryVFS: VFS, @unchecked Sendable {
         for fileKey in files.keys where parent(of: fileKey) == key {
             names.insert(fileKey.last!)
         }
-        for dirKey in directories where parent(of: dirKey) == key {
+        for dirKey in directories where dirKey.count == key.count + 1 && parent(of: dirKey) == key {
             names.insert(dirKey.last!)
         }
         return try names.sorted().map { name in
@@ -60,6 +96,7 @@ public final class InMemoryVFS: VFS, @unchecked Sendable {
     }
 
     public func metadata(of path: VFSPath) async throws -> VFSItem {
+        try checkInjection(.metadata)
         try checkOwn(path)
         let key = key(of: path)
         return try withLock { try itemLocked(name: key.last ?? "", key: key) }
@@ -69,6 +106,7 @@ public final class InMemoryVFS: VFS, @unchecked Sendable {
     /// per visited file, emission happens after the locked walk (sinks must not poke
     /// back into this VFS from inside the lock).
     public func directorySize(of path: VFSPath, progress: ProgressSink?) async throws -> Int64 {
+        try checkInjection(.directorySize)
         try checkOwn(path)
         let key = key(of: path)
         var updates: [ProgressUpdate] = []
@@ -91,6 +129,7 @@ public final class InMemoryVFS: VFS, @unchecked Sendable {
     // MARK: §5.3 mutations
 
     public func createDirectory(_ name: String, in parent: VFSPath) async throws -> VFSPath {
+        try checkInjection(.createDirectory)
         try checkOwn(parent)
         guard !name.isEmpty, !name.contains("/") else { throw MCError.vfsUnsupported(id, "EINVAL: name «\(name)»") }
         let parentKey = key(of: parent)
@@ -107,6 +146,7 @@ public final class InMemoryVFS: VFS, @unchecked Sendable {
     }
 
     public func rename(_ path: VFSPath, to name: String) async throws -> VFSPath {
+        try checkInjection(.rename)
         try checkOwn(path)
         guard !name.isEmpty, !name.contains("/") else { throw MCError.vfsUnsupported(id, "EINVAL: name «\(name)»") }
         let sourceKey = key(of: path)
@@ -136,6 +176,7 @@ public final class InMemoryVFS: VFS, @unchecked Sendable {
 
     /// Direct removal (06 §6.2: VFS без trash → прямое удаление; the fake has no trash).
     public func delete(_ paths: [VFSPath], toTrash: Bool) async throws {
+        try checkInjection(.delete)
         try paths.forEach { try checkOwn($0) }
         try withLock {
             for path in paths {
@@ -156,37 +197,13 @@ public final class InMemoryVFS: VFS, @unchecked Sendable {
         }
     }
 
-    /// Walks the SOURCE side and pushes bytes into `to` through the §5.5 streams.
-    public func copyContents(from: VFSPath, to destination: any VFS, target targetDirectory: VFSPath) async throws {
-        try checkOwn(from)
-        let meta = try await metadata(of: from)
-        let name = from.components.last ?? ""
-        let destinationPath = childPath(of: targetDirectory, name)
-
-        if case .directory = meta.kind {
-            _ = try await destination.createDirectory(name, in: targetDirectory)
-            let children = try await listDirectory(at: from)
-            for child in children {
-                try await copyContents(from: child.id, to: destination, target: destinationPath)
-            }
-        } else {
-            let occupied = try? await destination.metadata(of: destinationPath)
-            if occupied != nil { throw MCError.transferConflict(source: from, target: destinationPath) }
-            let stream = try await openRead(from)
-            let writer = try await destination.openWrite(destinationPath, replace: false)
-            while let chunk = try await stream.readChunk(max: 1 << 20) {
-                try await writer.write(chunk)
-            }
-            let sourceAttributes = meta.attributes
-            // The destination driver publishes bytes when the writer commits (§5.5).
-            try await writer.finish(committingTo: destinationPath)
-            try await destination.setAttributes(destinationPath) { $0 = sourceAttributes }
-        }
-    }
+    /// Uses the default two-panel copy from the `VFS` extension (DomainKit) —
+    /// no override: the fake delegates bytes through its own `openRead`/writers.
 
     // MARK: §5.5 streams
 
     public func openRead(_ path: VFSPath) async throws -> any ByteStream {
+        try checkInjection(.openRead)
         try checkOwn(path)
         let key = key(of: path)
         return try withLock {
@@ -198,6 +215,7 @@ public final class InMemoryVFS: VFS, @unchecked Sendable {
     }
 
     public func openWrite(_ path: VFSPath, replace: Bool) async throws -> any ByteStreamWriter {
+        try checkInjection(.openWrite)
         try checkOwn(path)
         let key = key(of: path)
         try withLock {
@@ -210,6 +228,7 @@ public final class InMemoryVFS: VFS, @unchecked Sendable {
     }
 
     public func setAttributes(_ path: VFSPath, mutate: (inout VFSItemAttributes) -> Void) async throws {
+        try checkInjection(.setAttributes)
         try checkOwn(path)
         let key = key(of: path)
         try withLock {
@@ -258,10 +277,6 @@ public final class InMemoryVFS: VFS, @unchecked Sendable {
     private func key(of path: VFSPath) -> [String] { path.components }
 
     private func parent(of components: [String]) -> [String] { Array(components.dropLast()) }
-
-    private func childPath(of directory: VFSPath, _ name: String) -> VFSPath {
-        VFSPath(root: directory.root, components: directory.components + [name])
-    }
 
     private func replacedPrefix(of components: [String], replacing oldRoot: [String], with newRoot: [String]) -> [String] {
         newRoot + Array(components.dropFirst(oldRoot.count))

@@ -60,3 +60,32 @@ public protocol VFSRegistryProtocol: Sendable {
     func register(_ vfs: any VFS) async
     func mountedVolumes() async -> [VFSInstanceID]
 }
+
+public extension VFS {
+    /// Default two-panel copy (docs/SDD/12, «Уточнение T-03»): the SOURCE side walks
+    /// its own tree (`metadata`/`listDirectory`/`openRead`) and pushes bytes into the
+    /// destination through `openWrite`/`finish`. Adapters with true server-side copy
+    /// (archive/SFTP in later milestones) override this requirement.
+    func copyContents(from source: VFSPath, to destination: any VFS, target targetDirectory: VFSPath) async throws {
+        let meta = try await self.metadata(of: source)
+        let name = source.components.last ?? ""
+        let destinationPath = VFSPath(root: targetDirectory.root, components: targetDirectory.components + [name])
+
+        if case .directory = meta.kind {
+            _ = try await destination.createDirectory(name, in: targetDirectory)
+            for child in try await self.listDirectory(at: source) {
+                try await self.copyContents(from: child.id, to: destination, target: destinationPath)
+            }
+        } else {
+            let occupied = try? await destination.metadata(of: destinationPath)
+            if occupied != nil { throw MCError.transferConflict(source: source, target: destinationPath) }
+            let stream = try await self.openRead(source)
+            let writer = try await destination.openWrite(destinationPath, replace: false)
+            while let chunk = try await stream.readChunk(max: 1 << 20) {   // contract 06 §6.2: chunks 1–4 MB
+                try await writer.write(chunk)
+            }
+            try await writer.finish(committingTo: destinationPath)
+            try await destination.setAttributes(destinationPath) { $0 = meta.attributes }
+        }
+    }
+}

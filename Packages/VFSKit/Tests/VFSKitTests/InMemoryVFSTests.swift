@@ -203,3 +203,43 @@ private func readAll(_ stream: any ByteStream, chunkSize: Int = 64 * 1024) async
         try await vfs.metadata(of: VFSPath(root: vfs.id, components: ["big", "tree", "keep.bin"]))
     }
 }
+
+// MARK: errno-инъекция (docs/SDD/12 T-04; будет употребляться матрицей T-11)
+
+@Test func injectedFailureFailsOperationThenRecoveryClears() async throws {
+    let vfs = InMemoryVFS(name: "faults")
+    let root = VFSPath(root: vfs.id)
+    _ = try await vfs.createDirectory("alpha", in: root)
+    try await writeChunked(vfs, to: VFSPath(root: vfs.id, components: ["alpha", "data.bin"]), chunks: [Data("keep".utf8)])
+    vfs.injectFailure(MCError.vfsAccessDenied(root, underlying: nil), for: [.openRead])
+
+    await #expect(throws: MCError.self) {
+        _ = try await vfs.openRead(VFSPath(root: vfs.id, components: ["alpha", "data.bin"]))
+    }
+    // The default two-panel copy reads through openRead → the fault propagates.
+    _ = try await vfs.createDirectory("beta", in: root)
+    await #expect(throws: MCError.self) {
+        try await vfs.copyContents(
+            from: VFSPath(root: vfs.id, components: ["alpha", "data.bin"]),
+            to: vfs,
+            target: VFSPath(root: vfs.id, components: ["beta"])
+        )
+    }
+
+    vfs.injectFailure(nil)   // recovery
+    let stream = try await vfs.openRead(VFSPath(root: vfs.id, components: ["alpha", "data.bin"]))
+    var restored = Data()
+    while let chunk = try await stream.readChunk(max: 1024) { restored.append(chunk) }
+    #expect(restored == Data("keep".utf8))
+}
+
+@Test func injectionAppliesOnlyToChosenOperations() async throws {
+    let vfs = InMemoryVFS(name: "audit")
+    let root = VFSPath(root: vfs.id)
+    vfs.injectFailure(MCError.vfsNotFound(root), for: [.metadata])
+
+    await #expect(throws: MCError.self) {
+        _ = try await vfs.metadata(of: VFSPath(root: vfs.id, components: ["whatever"]))
+    }
+    #expect(try await vfs.listDirectory(at: root).isEmpty)   // other operations stay healthy
+}
