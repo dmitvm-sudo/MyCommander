@@ -212,6 +212,33 @@ private func tabsMakeList() -> (PanelTabList, InMemoryVFS) {
     #expect(Date().timeIntervalSince(switchStarted) < 0.05)
 }
 
+@Test @MainActor func cycleTabWrapsAroundWithinPanel() async throws {
+    let (list, fake) = tabsMakeList()
+    let root = VFSPath(root: fake.id)
+    for name in ["alpha", "beta", "gamma"] {
+        _ = try await fake.createDirectory(name, in: root)
+    }
+    list.seed(with: VFSPath(root: fake.id, components: ["alpha"]))
+    list.appendTab(at: VFSPath(root: fake.id, components: ["beta"]))
+    list.appendTab(at: VFSPath(root: fake.id, components: ["gamma"]))
+    #expect(list.tabs.count == 3)
+
+    // ⌃Tab: forward with wrap-around; ⌃⇧Tab: backward with wrap-around.
+    list.cycleTab(step: 1)
+    #expect(list.activeIndex == 0)   // 2 + 1 → wrapped to 0
+    list.cycleTab(step: -1)
+    #expect(list.activeIndex == 2)
+    list.cycleTab(step: 1)
+    #expect(list.activeIndex == 0)
+
+    // A single tab never cycles.
+    list.closeTab(at: 1)
+    list.closeTab(at: 1)
+    #expect(list.tabs.count == 1)
+    list.cycleTab(step: 1)
+    #expect(list.activeIndex == 0)
+}
+
 @Test @MainActor func closedTabStopsWatchingAndReopenRestoresWatch() async throws {
     let (list, fake) = tabsMakeList()
     let root = VFSPath(root: fake.id)

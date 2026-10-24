@@ -1,61 +1,86 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import AppKit
-import ListViewKit
+import ServicesKit
 
-/// Main menu = today's hand-built slice of the future keymap profile reflection
-/// (docs/SDD/11: MenuBuilder — «главное меню = отражение keymap-профиля»).
-/// Full CommandID-routing and keymap files belong to T-09; until then the menu
-/// targets PanelsCoordinator methods directly.
+/// Main menu = reflection of the active keymap profile (docs/SDD/11:
+/// «главное меню = отражение keymap-профиля», docs/SDD/06 §6.10: «пользователь
+/// в меню видит хоткеи реального профиля»). Declarative: a section/item spec
+/// lists CommandIDs, the router decides what is reachable (only commands with
+/// registered handlers appear), the keymap supplies key equivalents.
 @MainActor
 enum MenuBuilder {
-    private static let upArrowKeyEquivalent = String(UnicodeScalar(UInt32(NSUpArrowFunctionKey))!)
+    private struct ItemSpec {
+        let titleKey: String
+        let command: CommandID
+    }
 
-    static func build(coordinator: PanelsCoordinator) -> NSMenu {
+    private struct SectionSpec {
+        let titleKey: String
+        let items: [ItemSpec]
+    }
+
+    private static let sections: [SectionSpec] = [
+        SectionSpec(titleKey: "menu.go", items: [
+            ItemSpec(titleKey: "menu.parentDirectory", command: .goUp),
+            ItemSpec(titleKey: "menu.home", command: .goHome),
+            ItemSpec(titleKey: "menu.reload", command: .reloadPanel),
+        ]),
+        SectionSpec(titleKey: "menu.tabs", items: [
+            ItemSpec(titleKey: "menu.newTab", command: .newTab),
+            ItemSpec(titleKey: "menu.closeTab", command: .closeTab),
+            ItemSpec(titleKey: "menu.reopenClosedTab", command: .reopenClosedTab),
+            ItemSpec(titleKey: "menu.nextTab", command: .nextTab),
+            ItemSpec(titleKey: "menu.previousTab", command: .previousTab),
+        ]),
+        SectionSpec(titleKey: "menu.view", items: [
+            ItemSpec(titleKey: "menu.focusLeft", command: .focusLeft),
+            ItemSpec(titleKey: "menu.focusRight", command: .focusRight),
+            ItemSpec(titleKey: "menu.swapPanels", command: .swapPanels),
+            ItemSpec(titleKey: "menu.viewFull", command: .viewFull),
+            ItemSpec(titleKey: "menu.viewBrief", command: .viewBrief),
+        ]),
+        SectionSpec(titleKey: "menu.selection", items: [
+            ItemSpec(titleKey: "menu.selectAll", command: .selectAll),
+            ItemSpec(titleKey: "menu.invertSelection", command: .invertAll),
+            ItemSpec(titleKey: "menu.restoreSelection", command: .restoreSelection),
+            ItemSpec(titleKey: "menu.selectMasked", command: .selectMasked),
+            ItemSpec(titleKey: "menu.deselectMasked", command: .deselectMasked),
+        ]),
+    ]
+
+    static func build(router: CommandRouter, keymap: KeymapStore) -> NSMenu {
         let main = NSMenu()
 
-        // Application menu.
+        // Application menu (nil-target responder chain item).
         let appItem = NSMenuItem()
         let appMenu = NSMenu(title: String(localized: "menu.appName"))
         appMenu.addItem(withTitle: String(localized: "menu.quit"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         appItem.submenu = appMenu
         main.addItem(appItem)
 
-        // Go.
-        let goItem = NSMenuItem()
-        let goMenu = NSMenu(title: String(localized: "menu.go"))
-        goMenu.addItem(withTitle: String(localized: "menu.parentDirectory"), action: #selector(PanelsCoordinator.mcGoUp(_:)), keyEquivalent: upArrowKeyEquivalent)
-        goMenu.addItem(withTitle: String(localized: "menu.home"), action: #selector(PanelsCoordinator.mcGoHome(_:)), keyEquivalent: "h")
-            .withKeyEquivalentModifierMask([.command, .shift])
-        goMenu.addItem(withTitle: String(localized: "menu.reload"), action: #selector(PanelsCoordinator.mcReload(_:)), keyEquivalent: "r")
-        goItem.submenu = goMenu
-        main.addItem(goItem)
+        for section in sections {
+            let item = NSMenuItem()
+            let menu = NSMenu(title: String(localized: String.LocalizationValue(section.titleKey)))
+            for spec in section.items where router.isRegistered(spec.command) {
+                let entry = keymap.entry(for: spec.command, in: .global)
+                let menuItem = NSMenuItem(
+                    title: String(localized: String.LocalizationValue(spec.titleKey)),
+                    action: #selector(CommandRouter.dispatchMenuItem(_:)),
+                    keyEquivalent: entry.flatMap { keyEquivalent(for: $0.combo.keyCode) } ?? ""
+                )
+                if let entry {
+                    menuItem.keyEquivalentModifierMask = modifierMask(for: entry.combo.modifiers)
+                }
+                menuItem.target = router
+                menuItem.representedObject = spec.command.rawValue
+                menu.addItem(menuItem)
+            }
+            item.submenu = menu
+            main.addItem(item)
+        }
 
-        // View.
-        let viewItem = NSMenuItem()
-        let viewMenu = NSMenu(title: String(localized: "menu.view"))
-        viewMenu.addItem(withTitle: String(localized: "menu.focusLeft"), action: #selector(PanelsCoordinator.mcFocusLeft(_:)), keyEquivalent: "1")
-        viewMenu.addItem(withTitle: String(localized: "menu.focusRight"), action: #selector(PanelsCoordinator.mcFocusRight(_:)), keyEquivalent: "2")
-        viewMenu.addItem(withTitle: String(localized: "menu.swapPanels"), action: #selector(PanelsCoordinator.mcSwapPanels(_:)), keyEquivalent: "u")
-        viewMenu.addItem(.separator())
-        viewMenu.addItem(withTitle: String(localized: "menu.viewFull"), action: #selector(PanelsCoordinator.mcViewFull(_:)), keyEquivalent: "1")
-            .withKeyEquivalentModifierMask(.control)
-        viewMenu.addItem(withTitle: String(localized: "menu.viewBrief"), action: #selector(PanelsCoordinator.mcViewBrief(_:)), keyEquivalent: "2")
-            .withKeyEquivalentModifierMask(.control)
-        viewItem.submenu = viewMenu
-        main.addItem(viewItem)
-
-        // Tabs (F-2: ⌘T / ⌘W / ⌘⇧T).
-        let tabsItem = NSMenuItem()
-        let tabsMenu = NSMenu(title: String(localized: "menu.tabs"))
-        tabsMenu.addItem(withTitle: String(localized: "menu.newTab"), action: #selector(PanelsCoordinator.mcNewTab(_:)), keyEquivalent: "t")
-        tabsMenu.addItem(withTitle: String(localized: "menu.closeTab"), action: #selector(PanelsCoordinator.mcCloseTab(_:)), keyEquivalent: "w")
-        tabsMenu.addItem(withTitle: String(localized: "menu.reopenClosedTab"), action: #selector(PanelsCoordinator.mcReopenClosedTab(_:)), keyEquivalent: "t")
-            .withKeyEquivalentModifierMask([.command, .shift])
-        tabsItem.submenu = tabsMenu
-        main.addItem(tabsItem)
-
-        // Window.
+        // Window (nil-target responder chain actions).
         let windowItem = NSMenuItem()
         let windowMenu = NSMenu(title: String(localized: "menu.window"))
         windowMenu.addItem(withTitle: String(localized: "menu.miniaturize"), action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
@@ -63,23 +88,75 @@ enum MenuBuilder {
         windowItem.submenu = windowMenu
         main.addItem(windowItem)
 
-        // Explicit targets for coordinator actions; nil-target items walk the
-        // responder chain (terminate/miniaturize/zoom).
-        for menu in [goMenu, tabsMenu, viewMenu] {
-            for item in menu.items where item.action != nil {
-                item.target = coordinator
-            }
-        }
-
         return main
     }
-}
 
-extension NSMenuItem {
-    @discardableResult
-    fileprivate func withKeyEquivalentModifierMask(_ mask: NSEvent.ModifierFlags) -> NSMenuItem {
-        keyEquivalentModifierMask = mask
-        return self
+    // MARK: ANSI-US keycode → menu key equivalent
+
+    /// Menu display for the ANSI-US mapping of 07 §7.3; non-printable keys
+    /// (arrows beyond ↑, Tab, function keys) have no menu equivalent yet —
+    /// they still work through the keymap, they just display in Settings later.
+    static func keyEquivalent(for keyCode: UInt16) -> String? {
+        switch keyCode {
+        case 0: return "a"
+        case 1: return "s"
+        case 2: return "d"
+        case 3: return "f"
+        case 4: return "h"
+        case 5: return "g"
+        case 6: return "z"
+        case 7: return "x"
+        case 8: return "c"
+        case 9: return "v"
+        case 11: return "b"
+        case 12: return "q"
+        case 13: return "w"
+        case 14: return "e"
+        case 15: return "r"
+        case 16: return "y"
+        case 17: return "t"
+        case 18: return "1"
+        case 19: return "2"
+        case 20: return "3"
+        case 21: return "4"
+        case 22: return "6"
+        case 23: return "5"
+        case 25: return "9"
+        case 26: return "7"
+        case 29: return "8"
+        case 31: return "o"
+        case 32: return "u"
+        case 34: return "i"
+        case 35: return "p"
+        case 37: return "l"
+        case 38: return "j"
+        case 39: return "k"
+        case 43: return ","
+        case 44: return "-"
+        case 45: return "."
+        case 46: return "/"
+        case 67: return "*"
+        case 69: return "+"
+        case 75: return "/"
+        case 78: return "-"
+        case 126: return String(UnicodeScalar(UInt32(NSUpArrowFunctionKey))!)
+        default: return nil
+        }
+    }
+
+    static func modifierMask(for tokens: Set<ModifierToken>) -> NSEvent.ModifierFlags {
+        var flags: NSEvent.ModifierFlags = []
+        for token in tokens {
+            switch token {
+            case .command: flags.insert(.command)
+            case .control: flags.insert(.control)
+            case .option: flags.insert(.option)
+            case .shift: flags.insert(.shift)
+            case .function: flags.insert(.function)
+            case .numericPad: break   // display-only tokens carry no menu mask
+            }
+        }
+        return flags
     }
 }
 

@@ -7,13 +7,14 @@ import ServicesKit
 import VFSKit
 
 /// Active/opposite panel dispatcher (docs/SDD/11: PanelsCoordinator — активная/
-/// противопоставленная панели, диспетчер операций) plus menu action entry
-/// points. T-08: each pane is a `PanelViewController` (tabs + file list);
-/// the coordinator owns the two tab lists, the session save/restore (F-2) and
-/// the volume unmount loop (T-06).
+/// противопоставленная панели, диспетчер операций). T-09: every action is a
+/// `CommandID` dispatched through `router`; menu key equivalents come from
+/// `keymapStore` (active profile «tc» = the 07 map).
 @MainActor
 final class PanelsCoordinator: NSObject {
     let focus = FocusController()
+    let router = CommandRouter()
+    let keymapStore: KeymapStore
     private(set) var leftPane: PanelViewController!
     private(set) var rightPane: PanelViewController!
     private var leftTabList: PanelTabList!
@@ -41,6 +42,7 @@ final class PanelsCoordinator: NSObject {
         self.fileSystem = fileSystem
         self.watcher = FSEventsWatcher(vfs: fileSystem)
         self.sessionStore = SessionStore()
+        self.keymapStore = KeymapStore(defaultProfiles: Self.bundledKeymapProfiles())
         super.init()
 
         // F-2: the tab stacks survive relaunch; a missing/foreign session falls
@@ -57,6 +59,22 @@ final class PanelsCoordinator: NSObject {
         leftPane.fileListView.onActivated = { [weak self] in self?.focus.activate(.left) }
         rightPane.fileListView.onActivated = { [weak self] in self?.focus.activate(.right) }
         focus.onFocusChanged = { [weak self] side in self?.applyFocus(side) }
+
+        registerCommandHandlers()
+    }
+
+    /// T-09: the bundled 07-map profiles; «tc» must decode first — it is the
+    /// active default (docs/SDD/12: «карта 07 активна»).
+    private static func bundledKeymapProfiles() -> [KeymapProfile] {
+        var profiles: [KeymapProfile] = []
+        for name in ["tc", "macos"] {
+            guard let url = Bundle.module.url(forResource: "keymap-\(name)", withExtension: "json"),
+                  let data = try? Data(contentsOf: url),
+                  let profile = try? JSONDecoder().decode(KeymapProfile.self, from: data)
+            else { continue }
+            profiles.append(profile)
+        }
+        return profiles
     }
 
     deinit {
@@ -159,33 +177,84 @@ final class PanelsCoordinator: NSObject {
         pane.listTableView.window?.makeFirstResponder(pane.listTableView)
     }
 
-    // MARK: menu action entry points (MenuBuilder targets)
+    // MARK: command handlers (T-09: единственный dispatch — CommandRouter)
 
-    @objc func mcGoUp(_ sender: Any?) {
-        guard let pane = activePane else { return }
-        Task { _ = await pane.fileListView.viewModel.goUp() }
+    private func registerCommandHandlers() {
+        // Navigation.
+        router.register(.goUp) { [weak self] in
+            guard let pane = self?.activePane else { return }
+            Task { _ = await pane.fileListView.viewModel.goUp() }
+        }
+        router.register(.goHome) { [weak self] in
+            guard let pane = self?.activePane, let target = self?.homePath else { return }
+            Task { try? await pane.fileListView.viewModel.openDirectory(at: target) }
+        }
+        router.register(.reloadPanel) { [weak self] in
+            guard let pane = self?.activePane else { return }
+            Task { await pane.fileListView.viewModel.reload() }
+        }
+        router.register(.openItem) { [weak self] in
+            guard let pane = self?.activePane else { return }
+            let viewModel = pane.fileListView.viewModel
+            Task {
+                _ = await viewModel.openItem(atVisibleIndex: viewModel.cursor)
+            }
+        }
+
+        // Focus / panels.
+        router.register(.focusLeft) { [weak self] in self?.focus.activate(.left) }
+        router.register(.focusRight) { [weak self] in self?.focus.activate(.right) }
+        router.register(.swapPanels) { [weak self] in self?.swapPanels() }
+
+        // Tabs (F-2: ⌘T / ⌘W / ⌘⇧T, ⌃Tab / ⌃⇧Tab).
+        router.register(.newTab) { [weak self] in
+            guard let pane = self?.activePane else { return }
+            let sourcePath = pane.tabList.activeTab?.viewModel.path ?? self?.homePath
+            _ = pane.tabList.appendTab(at: sourcePath)
+        }
+        router.register(.closeTab) { [weak self] in
+            guard let pane = self?.activePane else { return }
+            pane.tabList.closeTab(at: pane.tabList.activeIndex)
+        }
+        router.register(.reopenClosedTab) { [weak self] in
+            guard let pane = self?.activePane else { return }
+            pane.tabList.reopenLastClosed()
+        }
+        router.register(.nextTab) { [weak self] in
+            self?.activePane?.tabList.cycleTab(step: 1)
+        }
+        router.register(.previousTab) { [weak self] in
+            self?.activePane?.tabList.cycleTab(step: -1)
+        }
+
+        // Display modes (F-4 start).
+        router.register(.viewFull) { [weak self] in
+            self?.activePane?.fileListView.viewModel.setViewMode(.full)
+        }
+        router.register(.viewBrief) { [weak self] in
+            self?.activePane?.fileListView.viewModel.setViewMode(.brief)
+        }
+
+        // Selection (F-3). The mask commands open a mask prompt (T-07 note:
+        // «диалог ввода маски — с командным слоем»).
+        router.register(.selectAll) { [weak self] in
+            self?.activePane?.fileListView.viewModel.selectAll()
+        }
+        router.register(.invertAll) { [weak self] in
+            self?.activePane?.fileListView.viewModel.invertAll()
+        }
+        router.register(.restoreSelection) { [weak self] in
+            self?.activePane?.fileListView.viewModel.restoreSelection()
+        }
+        router.register(.selectMasked) { [weak self] in
+            self?.beginMaskDialog(deselecting: false)
+        }
+        router.register(.deselectMasked) { [weak self] in
+            self?.beginMaskDialog(deselecting: true)
+        }
     }
 
-    @objc func mcReload(_ sender: Any?) {
-        guard let pane = activePane else { return }
-        Task { await pane.fileListView.viewModel.reload() }
-    }
-
-    @objc func mcGoHome(_ sender: Any?) {
-        guard let pane = activePane else { return }
-        let target = homePath
-        Task { try? await pane.fileListView.viewModel.openDirectory(at: target) }
-    }
-
-    @objc func mcFocusLeft(_ sender: Any?) {
-        focus.activate(.left)
-    }
-
-    @objc func mcFocusRight(_ sender: Any?) {
-        focus.activate(.right)
-    }
-
-    @objc func mcSwapPanels(_ sender: Any?) {
+    private func swapPanels() {
         guard let leftList = leftTabList, let rightList = rightTabList else { return }
         leftPane.adoptTabList(rightList)
         rightPane.adoptTabList(leftList)
@@ -194,35 +263,32 @@ final class PanelsCoordinator: NSObject {
         applyFocus(focus.activePanel)
     }
 
-    // MARK: tabs (F-2: ⌘T / ⌘W / ⌘⇧T)
+    // MARK: mask dialog (F-3: Num +/− по шаблону)
 
-    /// ⌘T: a new tab next to the active one, in the same directory (classic
-    /// NC/TC behaviour); a locked tab diverts here by design.
-    @objc func mcNewTab(_ sender: Any?) {
-        guard let pane = activePane else { return }
-        let sourcePath = pane.tabList.activeTab?.viewModel.path ?? homePath
-        _ = pane.tabList.appendTab(at: sourcePath)
-    }
-
-    @objc func mcCloseTab(_ sender: Any?) {
-        guard let pane = activePane else { return }
-        pane.tabList.closeTab(at: pane.tabList.activeIndex)
-    }
-
-    @objc func mcReopenClosedTab(_ sender: Any?) {
-        guard let pane = activePane else { return }
-        pane.tabList.reopenLastClosed()
-    }
-
-    // MARK: view modes (F-4 start: full/brief, docs/SDD/12 T-07)
-
-    @objc func mcViewFull(_ sender: Any?) {
-        guard let pane = activePane else { return }
-        pane.fileListView.viewModel.setViewMode(.full)
-    }
-
-    @objc func mcViewBrief(_ sender: Any?) {
-        guard let pane = activePane else { return }
-        pane.fileListView.viewModel.setViewMode(.brief)
+    /// Sheet with a one-line mask field; Enter applies, Esc cancels.
+    private func beginMaskDialog(deselecting: Bool) {
+        guard let pane = activePane, let window = pane.view.window else { return }
+        let alert = NSAlert()
+        alert.messageText = String(localized: deselecting
+            ? "dialog.mask.deselect"
+            : "dialog.mask.select")
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 240, height: 24))
+        field.placeholderString = String(localized: "dialog.mask.placeholder")
+        alert.accessoryView = field
+        alert.addButton(withTitle: String(localized: "dialog.mask.apply"))
+        alert.addButton(withTitle: String(localized: "dialog.mask.cancel"))
+        alert.beginSheetModal(for: window) { [weak self] response in
+            guard response == .alertFirstButtonReturn,
+                  let self,
+                  !field.stringValue.isEmpty
+            else { return }
+            let mask = FileMask([field.stringValue])
+            let viewModel = self.activePane?.fileListView.viewModel
+            if deselecting {
+                viewModel?.deselect(matching: mask)
+            } else {
+                viewModel?.select(matching: mask)
+            }
+        }
     }
 }

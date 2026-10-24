@@ -182,6 +182,14 @@ public final class PanelTabList {
         onTabsChanged?()
     }
 
+    /// ⌃Tab / ⌃⇧Tab (07 §7.3): cycle within the same panel, wrapping around.
+    public func cycleTab(step: Int) {
+        guard tabs.count > 1 else { return }
+        let wrapped = ((activeIndex + step) % tabs.count + tabs.count) % tabs.count
+        activate(wrapped)
+        onTabsChanged?()
+    }
+
     public func toggleLock(at index: Int) {
         guard tabs.indices.contains(index) else { return }
         tabs[index].isLocked.toggle()

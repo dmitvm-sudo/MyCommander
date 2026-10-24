@@ -18,7 +18,8 @@ final class MyCommanderApp: NSObject, NSApplicationDelegate {
 
         let coordinator = PanelsCoordinator()
         self.coordinator = coordinator
-        application.mainMenu = MenuBuilder.build(coordinator: coordinator)
+        // T-09: the menu reflects the active keymap profile (§6.10).
+        application.mainMenu = MenuBuilder.build(router: coordinator.router, keymap: coordinator.keymapStore)
 
         let mainWindow = MainWindowController(coordinator: coordinator)
         self.mainWindow = mainWindow

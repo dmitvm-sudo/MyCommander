@@ -45,7 +45,8 @@ let testTargets: [Target] = modules.map { module in
 let executable: Target = .executableTarget(
     name: "MyCommander",
     dependencies: modules.map { .byName(name: $0.name) },
-    path: "App"
+    path: "App",
+    resources: [.process("Resources")]   // T-09: keymap-*.json (docs/SDD/11)
 )
 
 let package = Package(
