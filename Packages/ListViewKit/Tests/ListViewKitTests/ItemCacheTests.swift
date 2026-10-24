@@ -69,8 +69,8 @@ private func cacheItem(
     let first = cacheItem(root: instance, name: "diagram.svg")
     let second = cacheItem(root: instance, name: "poster.svg")
 
-    let firstIcon = await cache.icon(for: first)
-    let secondIcon = await cache.icon(for: second)
+    let firstIcon = cache.icon(for: first)
+    let secondIcon = cache.icon(for: second)
     #expect(firstIcon != nil)
     // Same-extension items share one NSImage instance (static type-icon map).
     #expect(firstIcon === secondIcon)
@@ -87,7 +87,7 @@ private func cacheItem(
         attributes: VFSItemAttributes(),
         revision: 1
     )
-    #expect(await cache.icon(for: directory) != nil)
+    #expect(cache.icon(for: directory) != nil)
 }
 
 @Test @MainActor func itemCacheFallsBackToExtensionIconForMissingURL() async {
@@ -99,7 +99,7 @@ private func cacheItem(
         url: URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("mclv-missing-\(UUID().uuidString).doc")
     )
-    #expect(await cache.icon(for: missing) != nil)   // no such file → ext icon
+    #expect(cache.icon(for: missing) != nil)   // no such file → ext icon
 }
 
 @Test @MainActor func itemCacheUsesExactIconForRealFiles() async throws {
@@ -111,8 +111,8 @@ private func cacheItem(
     defer { try? FileManager.default.removeItem(at: url) }
 
     let stored = cacheItem(root: instance, name: "stored.txt", url: url)
-    let icon = await cache.icon(for: stored)
-    let again = await cache.icon(for: stored)
+    let icon = cache.icon(for: stored)
+    let again = cache.icon(for: stored)
     #expect(icon != nil)
     #expect(icon === again)   // URL cache hit: same instance
 }

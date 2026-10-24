@@ -36,6 +36,33 @@ public enum WatchEvent: Sendable {
     case volumeEvent(volume: VFSInstanceID, mounted: Bool)
 }
 
+public extension VFSItem {
+    /// Content-equivalence for watcher diffs and panel delta-batching:
+    /// every displayed field is compared, `revision` is NOT (each re-list
+    /// renumbers snapshots and would flood panels with phantom updates).
+    func isContentEquivalent(to other: VFSItem) -> Bool {
+        if name != other.name { return false }
+        switch (kind, other.kind) {
+        case (.directory, .directory), (.file, .file), (.special, .special):
+            break
+        case (.symlink(let a), .symlink(let b)):
+            if a != b { return false }
+        default:
+            return false
+        }
+        let lhs = attributes
+        let rhs = other.attributes
+        return lhs.size == rhs.size
+            && lhs.created == rhs.created
+            && lhs.modified == rhs.modified
+            && lhs.posixPermissions == rhs.posixPermissions
+            && lhs.isHidden == rhs.isHidden
+            && lhs.isReadOnly == rhs.isReadOnly
+            && lhs.tags == rhs.tags
+            && lhs.urlResourceMeta == rhs.urlResourceMeta
+    }
+}
+
 /// One engine serves many watches (LocalVFS: single FSEventStream for all watched
 /// dirs, §6.3). Non-watchable providers yield a stream that finishes immediately —
 /// the panel then refreshes on foreground return instead of events.

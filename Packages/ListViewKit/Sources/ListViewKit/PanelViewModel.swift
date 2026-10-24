@@ -26,8 +26,22 @@ public final class PanelViewModel {
     /// The panel's data source; owned for `openDirectory`, `goUp` and `reload`.
     public let source: any VFS
 
+    /// The watch engine the panel subscribes to for external changes. Set by the
+    /// owner (App assembly); may be nil (headless tests keep tailoring).
+    public var watchEngine: (any FileWatchEngineProtocol)? {
+        didSet { restartWatch() }
+    }
+
+    /// Internal watch loop: one `engine.watch(path)` task per current directory.
+    private var watchTask: Task<Void, Never>?
+
     /// Fires after the listing/sort changed (view reloads its table).
     public var onContentsChanged: (() -> Void)?
+    /// Fires for incremental updates (watch engine): the view applies tables
+    /// batches via `FileListDelta` instead of a full reload (F-1).
+    public var onContentsDelta: ((FileListDelta) -> Void)?
+    /// Exposed for wiring (the App layer may rewire watchers on navigation).
+    public var onPathChanged: ((VFSPath?) -> Void)?
     /// Surfaces navigation failures for the status line.
     public var onError: ((MCError) -> Void)?
 
@@ -46,12 +60,17 @@ public final class PanelViewModel {
     /// Injects a listing directly (tests, T-06 diff updates). Sorts, resets
     /// cursor/selection (item identities may no longer exist), notifies the view.
     public func setItems(_ items: [VFSItem], at path: VFSPath?) {
+        let previousPath = self.path
         self.path = path
         rawItems = items
         recomputeVisibility()
         selection = []
         cursor = 0
         onContentsChanged?()
+        if path != previousPath {
+            onPathChanged?(path)
+            restartWatch()
+        }
     }
 
     /// Switches sorting; identities survive, so selection is preserved.
@@ -135,6 +154,64 @@ public final class PanelViewModel {
         visibleIndices = rawItems
             .sortedItems(by: [sort])
             .compactMap { offsetByID[$0.id] }
+    }
+
+    /// Consistent apply of engine-produced `DirectoryDiff` (docs/SDD/06 §6.3):
+    /// merge by identity, recompute visibility, emit a row-start batch delta —
+    /// NOT a full reload (F-1: «дифф-обновление списков (не полный reload)»).
+    public func applyExternalDiff(_ diff: DirectoryDiff) {
+        guard !diff.isEmpty else { return }
+        let oldOrder = order()
+        let oldCursorItem = item(atVisibleIndex: cursor)
+
+        var mergedByID: [VFSPath: VFSItem] = [:]
+        mergedByID.reserveCapacity(rawItems.count + diff.added.count)
+        for item in rawItems where mergedByID[item.id] == nil {
+            mergedByID[item.id] = item
+        }
+        for item in diff.removed { mergedByID.removeValue(forKey: item.id) }
+        for item in diff.updated { mergedByID[item.id] = item }
+        for item in diff.added { mergedByID[item.id] = item }
+
+        rawItems = Array(mergedByID.values)
+        recomputeVisibility()
+        let newOrder = order()
+        let delta = DiffUpdate.diff(old: oldOrder, new: newOrder)
+
+        // Cursor remaps by surviving identity; selection keeps identities and
+        // prunes items vanished in the merge.
+        if let oldCursorItem, let newIndex = newOrder.firstIndex(where: { $0.id == oldCursorItem.id }) {
+            cursor = newIndex
+        } else {
+            cursor = max(0, min(cursor, max(visibleCount - 1, 0)))
+        }
+        selection.formIntersection(Set(newOrder.map(\.id)))
+
+        if !delta.isEmpty {
+            onContentsDelta?(delta)
+        }
+    }
+
+    // MARK: watch loop
+
+    private func restartWatch() {
+        watchTask?.cancel()
+        watchTask = nil
+        guard let path, let engine = watchEngine else { return }
+        let expectedPath = path
+        watchTask = Task { [weak self] in
+            let watchStream = engine.watch(expectedPath, options: WatchOptions())
+            for await event in watchStream {
+                guard let self else { return }
+                guard case .itemsChanged(let diff) = event else { continue }
+                guard self.path == expectedPath else { break }   // panel navigated away
+                self.applyExternalDiff(diff)
+            }
+        }
+    }
+
+    private func order() -> [VFSItem] {
+        visibleIndices.map { rawItems[$0] }
     }
 
     private func normalize(_ error: Error) -> MCError {

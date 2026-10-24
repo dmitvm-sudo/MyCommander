@@ -30,13 +30,13 @@ public final class LocalVFS: VFS, @unchecked Sendable {
             credentialRef: nil,
             specID: LocalVFS.volumeID(of: standardized)
         )
-        // Write/Rename/Delete/RandomSeek/Dates/Symlinks: full POSIX profile; canWatch
-        // becomes true with FSEventsWatcher in T-06.
+        // Write/Rename/Delete/RandomSeek/Dates/Symlinks: full POSIX profile.
+        // canWatch: FSEventsWatcher (T-06) serves every path with a displayURL.
         self.capabilities = VFSCapabilities(
             canWrite: true,
             canDelete: true,
             canRename: true,
-            canWatch: false,
+            canWatch: true,
             canRandomSeek: true,
             preservesDates: true,
             symlinkSupport: true

@@ -298,5 +298,5 @@ private func requireSendable<T: Sendable>(_ value: T) { _ = value }
     requireSendable(vfs.id)
     requireSendable(vfs.capabilities)
     #expect(vfs.capabilities.canWrite && vfs.capabilities.canRename && vfs.capabilities.canDelete)
-    #expect(vfs.capabilities.canWatch == false)   // FSEventsWatcher comes with T-06
+    #expect(vfs.capabilities.canWatch == true)   // FSEventsWatcher wired in T-06
 }

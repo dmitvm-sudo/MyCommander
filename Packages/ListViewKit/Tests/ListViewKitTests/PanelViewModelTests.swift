@@ -183,7 +183,7 @@ private func visibleNames(of vm: PanelViewModel) -> [String] {
     let root = temporaryPanelDirectory("browse")
     defer { try? FileManager.default.removeItem(at: root) }
     let vfs = LocalVFS(at: root, instanceID: VFSInstanceID(kind: .localDisk, specID: "browse-unit"))
-    try FileManager.default.createFile(
+    FileManager.default.createFile(
         atPath: root.appendingPathComponent("compact.txt").path,
         contents: Data("c".utf8)
     )

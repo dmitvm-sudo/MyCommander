@@ -125,6 +125,7 @@ public final class FileListView: NSView {
 
     private func wireViewModel() {
         viewModel.onContentsChanged = { [weak self] in self?.contentsChanged() }
+        viewModel.onContentsDelta = { [weak self] delta in self?.contentsDelta(delta) }
         viewModel.onError = { [weak self] error in
             guard let self else { return }
             self.errorNote = (error as LocalizedError).errorDescription ?? String(describing: error)
@@ -157,6 +158,48 @@ public final class FileListView: NSView {
         tableView.reloadData()
         tableView.deselectAll(self)
         updateStatus()
+    }
+
+    /// Batch application of a watch-engine delta (docs/SDD/06 §6.1): begin →
+    /// remove (old positions) → insert (new positions) → reload → end. Falls
+    /// back to a full reload if the table's row count no longer matches `oldCount`.
+    private func contentsDelta(_ delta: FileListDelta) {
+        errorNote = nil
+        guard delta.isValidAgainst(rowCount: tableView.numberOfRows) else {
+            contentsChanged()
+            return
+        }
+        if !delta.isEmpty {
+            tableView.beginUpdates()
+            if !delta.removed.isEmpty {
+                tableView.removeRows(at: IndexSet(delta.removed), withAnimation: .effectFade)
+            }
+            if !delta.inserted.isEmpty {
+                tableView.insertRows(at: IndexSet(delta.inserted), withAnimation: .effectFade)
+            }
+            if !delta.updated.isEmpty {
+                tableView.reloadData(
+                    forRowIndexes: IndexSet(delta.updated),
+                    columnIndexes: IndexSet(integersIn: 0 ..< max(tableView.numberOfColumns, 1))
+                )
+            }
+            tableView.endUpdates()
+        }
+        syncTableSelection()
+        updateStatus()
+    }
+
+    /// Restores the view's row-level selection from identity-based vm.selection
+    /// (after inserts/removes the previous indexes no longer match).
+    private func syncTableSelection() {
+        var indexes = IndexSet()
+        for row in 0 ..< viewModel.visibleCount {
+            if let item = viewModel.item(atVisibleIndex: row), viewModel.selection.contains(item.id) {
+                indexes.insert(row)
+            }
+        }
+        guard indexes != tableView.selectedRowIndexes else { return }
+        tableView.selectRowIndexes(indexes, byExtendingSelection: false)
     }
 
     private func updateStatus() {

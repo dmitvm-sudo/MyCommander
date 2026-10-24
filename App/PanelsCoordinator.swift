@@ -21,16 +21,26 @@ final class PanelsCoordinator: NSObject {
     /// into other disks) comes with the registry task — single-disk browsing is
     /// the T-05 gate («navigate local disk directories»).
     private let fileSystem: LocalVFS
+    /// Watch engine (T-06, docs/SDD/06 §6.3): one FSEventStream serves every
+    /// watched directory of the file system above; both panels subscribe.
+    private let watcher: FSEventsWatcher
+    /// Volume mount/unmount fan-out (§5.4 `.volumeEvent`).
+    private let volumeMonitor = VolumeMonitor()
+    private var volumeTask: Task<Void, Never>?
 
     private var homePath: VFSPath {
         VFSPath.local(URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true))
     }
 
     override init() {
-        fileSystem = LocalVFS(at: URL(fileURLWithPath: "/"))
+        let fileSystem = LocalVFS(at: URL(fileURLWithPath: "/"))
+        self.fileSystem = fileSystem
+        self.watcher = FSEventsWatcher(vfs: fileSystem)
         super.init()
         let leftModel = PanelViewModel(source: fileSystem)
         let rightModel = PanelViewModel(source: fileSystem)
+        leftModel.watchEngine = watcher
+        rightModel.watchEngine = watcher
         leftPane = FileListView(viewModel: leftModel)
         rightPane = FileListView(viewModel: rightModel)
         leftPane.onActivated = { [weak self] in self?.focus.activate(.left) }
@@ -38,11 +48,38 @@ final class PanelsCoordinator: NSObject {
         focus.onFocusChanged = { [weak self] side in self?.applyFocus(side) }
     }
 
+    deinit {
+        volumeTask?.cancel()
+    }
+
     /// Loads the initial listing of both panels (called at app launch).
     func start() async {
         try? await leftPane.viewModel.openDirectory(at: homePath)
         try? await rightPane.viewModel.openDirectory(at: homePath)
         applyFocus(.left)
+        startVolumeLoop()
+    }
+
+    /// Unmount handling (§5.4/T-06): a panel currently browsing the volume that
+    /// vanished reloads — the failed listing flows into `onError` and shows in
+    /// the status line. Matching is by instance identity; per-volume panel
+    /// instances arrive with the VFSRegistry task (browsing mounts through the
+    /// single `/`-rooted adapter cannot match by identity — see «Уточнение T-06»).
+    private func startVolumeLoop() {
+        volumeTask?.cancel()
+        volumeTask = Task { [weak self] in
+            guard let self else { return }
+            for await event in self.volumeMonitor.subscribe() {
+                guard case .volumeEvent(let instance, let mounted) = event else { continue }
+                guard !mounted else { continue }   // mount handling: VFSRegistry task
+                if self.leftPane.viewModel.path?.root == instance {
+                    await self.leftPane.viewModel.reload()
+                }
+                if self.rightPane.viewModel.path?.root == instance {
+                    await self.rightPane.viewModel.reload()
+                }
+            }
+        }
     }
 
     private var activePane: FileListView? {
