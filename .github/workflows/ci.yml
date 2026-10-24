@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-test:
+    name: Build + Test (macOS)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: swift build
+      - name: Test
+        run: swift test --enable-swift-testing
+      - name: License check (N-10)
+        run: ./Tools/license-check.sh
+
+  lint:
+    name: Lint (SwiftLint strict + SwiftFormat)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install linters
+        run: brew install swiftlint swiftformat
+      - name: SwiftLint
+        run: swiftlint --strict
+      - name: SwiftFormat
+        run: swiftformat --lint .

@@ -1,0 +1,15 @@
+included:
+  - App
+  - Packages
+
+line_length:
+  warning: 160
+  ignores_comments: true
+
+identifier_name:
+  min_length: 2
+  excluded:
+    - id
+    - ok
+    - fs
+    - n
