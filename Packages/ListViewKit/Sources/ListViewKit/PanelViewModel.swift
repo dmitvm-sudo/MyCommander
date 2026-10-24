@@ -76,6 +76,16 @@ public final class PanelViewModel {
     public var onPathChanged: ((VFSPath?) -> Void)?
     /// Surfaces navigation failures for the status line.
     public var onError: ((MCError) -> Void)?
+    /// Seated by the tab layer (F-2): return `false` to deny a navigation —
+    /// the gate owner decides what happens instead (locked tabs divert the
+    /// opened directory into a fresh tab). `nil` gate means always allowed.
+    public var navigationGate: ((VFSPath) -> Bool)?
+    /// Session restore (T-08): a selection applied at the next non-refresh
+    /// listing (a fresh tab loading its directory).
+    public func stageSelectionRestore(_ identities: Set<VFSPath>) {
+        stagedSelectionRestore = identities
+    }
+    private var stagedSelectionRestore: Set<VFSPath>?
 
     public init(
         source: any VFS,
@@ -115,6 +125,11 @@ public final class PanelViewModel {
             remapCursor(after: oldOrder)
         } else {
             selection = []
+            if let staged = stagedSelectionRestore {
+                stagedSelectionRestore = nil
+                // Session restore: only identities present in the fresh listing.
+                selection = staged.intersection(Set(rawItems.map(\.id)))
+            }
             previousSelection = []
             filterQuery = ""
             lastFilterQuery = ""
@@ -277,8 +292,15 @@ public final class PanelViewModel {
     }
 
     /// Loads `path` and publishes the listing. Throws `MCError` upward; callers
-    /// (such as `goUp`) also get it through `onError`.
-    public func openDirectory(at path: VFSPath) async throws {
+    /// (such as `goUp`) also get it through `onError`. A `navigationGate`
+    /// returning `false` silently cancels the navigation (locked tabs, F-2);
+    /// history replays bypass the gate — the lock governs new navigations only.
+    public func openDirectory(at path: VFSPath, bypassingGate: Bool = false) async throws {
+        guard bypassingGate || navigationGate?(path) ?? true else { return }
+        try await loadAndPublish(path)
+    }
+
+    private func loadAndPublish(_ path: VFSPath) async throws {
         let items = try await source.listDirectory(at: path)
         setItems(items, at: path)
     }
@@ -289,18 +311,21 @@ public final class PanelViewModel {
         guard let entry = item(atVisibleIndex: index) else { return nil }
         switch entry.kind {
         case .directory:
-            do { try await openDirectory(at: entry.id); return entry.id }
+            guard navigationGate?(entry.id) ?? true else { return nil }
+            do { try await loadAndPublish(entry.id); return entry.id }
             catch { onError?(normalize(error)); return nil }
         case .symlink(let target):
             guard let target, target.root == source.id else { return nil }
-            do { try await openDirectory(at: target); return target }
+            guard navigationGate?(target) ?? true else { return nil }
+            do { try await loadAndPublish(target); return target }
             catch { onError?(normalize(error)); return nil }
         case .file, .special:
             return nil
         }
     }
 
-    /// ⌘↑. `false` at the root or on failure (failure also goes to `onError`).
+    /// ⌘↑. `false` at the root, when denied by the gate, or on failure
+    /// (failure also goes to `onError`).
     @discardableResult
     public func goUp() async -> Bool {
         guard let path, !path.components.isEmpty else { return false }
@@ -309,8 +334,9 @@ public final class PanelViewModel {
             components: Array(path.components.dropLast()),
             displayURL: path.displayURL?.deletingLastPathComponent()
         )
+        guard navigationGate?(parent) ?? true else { return false }
         do {
-            try await openDirectory(at: parent)
+            try await loadAndPublish(parent)
             return true
         } catch {
             onError?(normalize(error))

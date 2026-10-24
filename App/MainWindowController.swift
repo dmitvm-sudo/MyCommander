@@ -24,8 +24,8 @@ final class MainWindowController: NSWindowController {
         splitView.isVertical = true
         splitView.dividerStyle = .thin
         splitView.autosaveName = "MCMainSplit"
-        splitView.addArrangedSubview(coordinator.leftPane)
-        splitView.addArrangedSubview(coordinator.rightPane)
+        splitView.addArrangedSubview(coordinator.leftPane.view)
+        splitView.addArrangedSubview(coordinator.rightPane.view)
 
         guard let contentView = window.contentView else { return }
         splitView.translatesAutoresizingMaskIntoConstraints = false

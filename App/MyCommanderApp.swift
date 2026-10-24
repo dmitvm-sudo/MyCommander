@@ -32,4 +32,9 @@ final class MyCommanderApp: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         true
     }
+
+    /// F-2: the tab stacks survive relaunch — persist on the way out.
+    func applicationWillTerminate(_ notification: Notification) {
+        coordinator?.saveSession()
+    }
 }

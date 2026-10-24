@@ -18,6 +18,7 @@ let moduleDependencyNames: [String: [String]] = [
     "VFSKit": ["DomainKit"],   // T-03: InMemoryVFS конформит VFS из DomainKit
     "EnginesKit": ["DomainKit"],   // T-07: FilterEngine оперирует DomainKit-типами (FileMask)
     "ListViewKit": ["DomainKit", "EnginesKit"],   // T-05 UI + T-07 панель фильтрует через FilterEngine (слой 04)
+    "ServicesKit": ["DomainKit"],   // T-08: SessionStore сериализует VFSPath (§5.1 Codable)
 ]
 
 /// Зависимости, нужные ТОЛЬКО тест-таргетам (fake-адаптеры VFSKit в UI-тестах:

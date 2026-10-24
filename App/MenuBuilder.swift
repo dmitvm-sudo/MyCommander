@@ -45,6 +45,16 @@ enum MenuBuilder {
         viewItem.submenu = viewMenu
         main.addItem(viewItem)
 
+        // Tabs (F-2: ⌘T / ⌘W / ⌘⇧T).
+        let tabsItem = NSMenuItem()
+        let tabsMenu = NSMenu(title: String(localized: "menu.tabs"))
+        tabsMenu.addItem(withTitle: String(localized: "menu.newTab"), action: #selector(PanelsCoordinator.mcNewTab(_:)), keyEquivalent: "t")
+        tabsMenu.addItem(withTitle: String(localized: "menu.closeTab"), action: #selector(PanelsCoordinator.mcCloseTab(_:)), keyEquivalent: "w")
+        tabsMenu.addItem(withTitle: String(localized: "menu.reopenClosedTab"), action: #selector(PanelsCoordinator.mcReopenClosedTab(_:)), keyEquivalent: "t")
+            .withKeyEquivalentModifierMask([.command, .shift])
+        tabsItem.submenu = tabsMenu
+        main.addItem(tabsItem)
+
         // Window.
         let windowItem = NSMenuItem()
         let windowMenu = NSMenu(title: String(localized: "menu.window"))
@@ -55,7 +65,7 @@ enum MenuBuilder {
 
         // Explicit targets for coordinator actions; nil-target items walk the
         // responder chain (terminate/miniaturize/zoom).
-        for menu in [goMenu, viewMenu] {
+        for menu in [goMenu, tabsMenu, viewMenu] {
             for item in menu.items where item.action != nil {
                 item.target = coordinator
             }

@@ -49,13 +49,21 @@ public final class FileListView: NSView {
         fatalError("FileListView is created programmatically only")
     }
 
-    /// Panel↔panel swap (⌘U «Swap Panels»): reconnect signals, reload.
+    /// Panel↔panel swap (⌘U «Swap Panels») and tab switching (F-2):
+    /// reconnect signals, reload, restore the tab's row selection and scroll
+    /// the cursor back into view.
     public func rebind(viewModel newViewModel: PanelViewModel) {
         viewModel.onContentsChanged = nil
+        viewModel.onContentsDelta = nil
         viewModel.onError = nil
         viewModel = newViewModel
         wireViewModel()
         tableView.reloadData()
+        applyViewMode(animating: false)
+        syncTableSelection()
+        if viewModel.visibleCount > 0 {
+            tableView.scrollRowToVisible(min(viewModel.cursor, viewModel.visibleCount - 1))
+        }
         updateStatus()
     }
 
