@@ -47,6 +47,13 @@ enum MenuBuilder {
             ItemSpec(titleKey: "menu.selectMasked", command: .selectMasked),
             ItemSpec(titleKey: "menu.deselectMasked", command: .deselectMasked),
         ]),
+        // Operations (T-11): F-5 file engine menu surface; items appear only
+        // when their handler is registered (MenuBuilder contract).
+        SectionSpec(titleKey: "menu.operations", items: [
+            ItemSpec(titleKey: "menu.copyFiles", command: .copyFiles),
+            ItemSpec(titleKey: "menu.moveFiles", command: .moveRenameFiles),
+            ItemSpec(titleKey: "menu.deleteFiles", command: .deleteFiles),
+        ]),
     ]
 
     static func build(router: CommandRouter, keymap: KeymapStore) -> NSMenu {

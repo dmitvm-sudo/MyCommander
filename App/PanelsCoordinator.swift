@@ -266,10 +266,18 @@ final class PanelsCoordinator: NSObject {
             self?.beginMaskDialog(deselecting: true)
         }
 
-        // Operations (F-5 core, T-10): copy from the active pane into the
-        // opposite pane (TC semantics), progress window observes the events.
+        // Operations (F-5 core, T-10/T-11): copy and move act on the effective
+        // selection of the active pane into the opposite pane (TC semantics);
+        // delete trashes the selection by default (F-5). The progress window
+        // observes the events.
         router.register(.copyFiles) { [weak self] in
-            self?.beginCopyToOppositePane()
+            self?.beginTransferToOppositePane(.copy)
+        }
+        router.register(.moveRenameFiles) { [weak self] in
+            self?.beginTransferToOppositePane(.move)
+        }
+        router.register(.deleteFiles) { [weak self] in
+            self?.beginDeleteSelection()
         }
     }
 
@@ -277,35 +285,77 @@ final class PanelsCoordinator: NSObject {
         focus.activePanel == .left ? rightPane : leftPane
     }
 
-    /// F-5: copy the effective selection of the active pane into the other
-    /// pane's current directory; conflicts default to «keep both» (auto-suffix)
-    /// until the T-12 conflict dialog lands.
-    private func beginCopyToOppositePane() {
-        guard let sourcePane = activePane, let destinationPane = oppositePane,
-              let target = destinationPane.fileListView.viewModel.path
-        else { return }
+    /// Effective selection of the active pane as planned source paths (empty
+    /// when there is nothing to operate on).
+    private var selectedSources: [VFSPath] {
+        guard let sourcePane = activePane else { return [] }
         let viewModel = sourcePane.fileListView.viewModel
         let selection = viewModel.effectiveSelection
-        guard !selection.isEmpty else { return }
+        guard !selection.isEmpty else { return [] }
         let sources = (0 ..< viewModel.visibleCount)
             .compactMap { viewModel.item(atVisibleIndex: $0) }
             .filter { selection.contains($0.id) }
             .map(\.id)
-        guard !sources.isEmpty else { return }
+        return sources
+    }
+
+    /// F-5: copy or move the effective selection of the active pane into the
+    /// other pane's current directory; conflicts default to «keep both»
+    /// (auto-suffix) until the T-12 conflict dialog lands.
+    private func beginTransferToOppositePane(_ op: TransferOpKind) {
+        guard let destinationPane = oppositePane,
+              let target = destinationPane.fileListView.viewModel.path
+        else { return }
+        let viewModel = activePane?.fileListView.viewModel
+        let sources = selectedSources
+        guard !sources.isEmpty, let viewModel else { return }
 
         Task {
             do {
-                let plan = try await TransferPlanner.planCopy(
-                    sources: sources,
-                    into: target,
-                    source: viewModel.source,
-                    destination: destinationPane.fileListView.viewModel.source
-                )
+                let plan: TransferPlan
+                switch op {
+                case .move:
+                    plan = try await TransferPlanner.planMove(
+                        sources: sources,
+                        into: target,
+                        source: viewModel.source,
+                        destination: destinationPane.fileListView.viewModel.source
+                    )
+                default:
+                    plan = try await TransferPlanner.planCopy(
+                        sources: sources,
+                        into: target,
+                        source: viewModel.source,
+                        destination: destinationPane.fileListView.viewModel.source
+                    )
+                }
                 guard !plan.items.isEmpty else { return }
                 let (id, stream) = await operationExecutor.enqueue(
                     plan,
                     policy: ConflictPolicy(defaultResolution: .keepBoth)
                 )
+                showProgress(id: id, operation: stream, itemCount: plan.items.count)
+            } catch let error as MCError {
+                _ = error   // status-line surfacing arrives with T-12 UX pass
+            } catch {
+                _ = error
+            }
+        }
+    }
+
+    /// F-5: delete the selection. The executor defaults to the Trash (F-5
+    /// «в корзину по умолчанию»); the permanent-delete path is a confirmation
+    /// dialog away (T-12 UX pass).
+    private func beginDeleteSelection() {
+        let viewModel = activePane?.fileListView.viewModel
+        let sources = selectedSources
+        guard !sources.isEmpty, let viewModel else { return }
+
+        Task {
+            do {
+                let plan = try await TransferPlanner.planDelete(sources: sources, source: viewModel.source)
+                guard !plan.items.isEmpty else { return }
+                let (id, stream) = await operationExecutor.enqueue(plan, policy: ConflictPolicy())
                 showProgress(id: id, operation: stream, itemCount: plan.items.count)
             } catch let error as MCError {
                 _ = error   // status-line surfacing arrives with T-12 UX pass
