@@ -16,6 +16,13 @@ let modules: [(name: String, path: String)] = [
 /// Межмодульные зависимости (docs/SDD/11). Дополняются по мере реализации модулей.
 let moduleDependencyNames: [String: [String]] = [
     "VFSKit": ["DomainKit"],   // T-03: InMemoryVFS конформит VFS из DomainKit
+    "ListViewKit": ["DomainKit"],   // T-05: панель оперирует DomainKit-контрактами (any VFS, SortCriteria)
+]
+
+/// Зависимости, нужные ТОЛЬКО тест-таргетам (fake-адаптеры VFSKit в UI-тестах:
+/// реальный листинг через LocalVFS/InMemoryVFS без подключения VFSKit к библиотеке).
+let testDependencyNames: [String: [String]] = [
+    "ListViewKit": ["VFSKit"],
 ]
 
 let libraries: [Target] = modules.map { module in
@@ -25,6 +32,7 @@ let libraries: [Target] = modules.map { module in
 
 let testTargets: [Target] = modules.map { module in
     let extra = (moduleDependencyNames[module.name] ?? []).map { Target.Dependency.byName(name: $0) }
+        + (testDependencyNames[module.name] ?? []).map { Target.Dependency.byName(name: $0) }
     return Target.testTarget(
         name: "\(module.name)Tests",
         dependencies: [.byName(name: module.name)] + extra,

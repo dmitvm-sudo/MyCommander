@@ -1,21 +1,9 @@
-// Точка входа (заглушка T-01). UI собирается в T-05+ (docs/SDD/09-Milestones-Roadmap.md).
-// Пока исполнимая цель нужна только для smoke-проверки графа: линкует все модули.
-import DomainKit
-import EnginesKit
-import FileOpsKit
-import ListViewKit
-import ServicesKit
-import TerminalKit
-import VFSKit
+// SPDX-License-Identifier: GPL-3.0-or-later
 
-let modules = [
-    DomainKitBuildInfo.moduleName,
-    VFSKitBuildInfo.moduleName,
-    FileOpsKitBuildInfo.moduleName,
-    EnginesKitBuildInfo.moduleName,
-    ListViewKitBuildInfo.moduleName,
-    TerminalKitBuildInfo.moduleName,
-    ServicesKitBuildInfo.moduleName,
-]
+import AppKit
+import Foundation
 
-print("MyCommander skeleton (M0). Modules linked: \(modules.joined(separator: ", "))")
+// T-05 entry point (docs/SDD/12): visible two-panel window, browsable directories.
+
+let application = MyCommanderApp()
+application.run()
