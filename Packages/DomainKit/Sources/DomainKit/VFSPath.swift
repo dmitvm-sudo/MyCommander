@@ -31,13 +31,15 @@ public struct VFSInstanceID: Hashable, Codable, Sendable {
 
 /// A path inside one source. Not an URL: works uniformly for archives and SFTP.
 /// Contract: docs/SDD/05-DataModel-VFS.md §5.1.
+/// Codable since T-03: JournalRecord (§5.6) and persistent sessions store paths
+/// verbatim (see docs/SDD/12, «Уточнение T-03»).
 ///
 /// Normalization semantics (tested in VFSPathTests):
 /// - components are relative to `root`, no leading separator, no empty segments;
 /// - `.` segments are dropped, `..` pops the previous component (clamped at root);
 /// - segments are canonically composed (NFC) so that NFD/NFC spellings of the same
 ///   name (macOS APFS/HFS+ NFD residue vs typed NFC) produce identical `VFSPath` values.
-public struct VFSPath: Hashable, Sendable {
+public struct VFSPath: Hashable, Codable, Sendable {
     public var root: VFSInstanceID
     /// Normalized segments without ".."; "/" is the root itself (empty components).
     public var components: [String]

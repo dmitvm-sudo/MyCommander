@@ -13,14 +13,21 @@ let modules: [(name: String, path: String)] = [
     ("ServicesKit", "Packages/ServicesKit"),
 ]
 
+/// Межмодульные зависимости (docs/SDD/11). Дополняются по мере реализации модулей.
+let moduleDependencyNames: [String: [String]] = [
+    "VFSKit": ["DomainKit"],   // T-03: InMemoryVFS конформит VFS из DomainKit
+]
+
 let libraries: [Target] = modules.map { module in
-    Target.target(name: module.name, path: "\(module.path)/Sources/\(module.name)")
+    let dependencies = (moduleDependencyNames[module.name] ?? []).map { Target.Dependency.byName(name: $0) }
+    return Target.target(name: module.name, dependencies: dependencies, path: "\(module.path)/Sources/\(module.name)")
 }
 
 let testTargets: [Target] = modules.map { module in
-    Target.testTarget(
+    let extra = (moduleDependencyNames[module.name] ?? []).map { Target.Dependency.byName(name: $0) }
+    return Target.testTarget(
         name: "\(module.name)Tests",
-        dependencies: [.byName(name: module.name)],
+        dependencies: [.byName(name: module.name)] + extra,
         path: "\(module.path)/Tests/\(module.name)Tests"
     )
 }

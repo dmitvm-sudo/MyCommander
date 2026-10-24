@@ -30,6 +30,7 @@
 - **Цель:** VFS-протоколы (5.3–5.5), TransferModels (5.6); fake-адаптер для тестов.
 - **Файлы:** VFS.swift, VFSCapabilities.swift, ByteStream.swift, WatchEvents.swift, TransferModels.swift, (InMemoryVFS перенесён в T-04? нет — здесь базовый, errno-инжекция в T-11).
 - **Готово:** компилируется с пустыми обработками; тест: простой «list→copy» сценарий через InMemoryVFS.
+- **Уточнение (по ходу реализации T-03):** (1) Семантика `copyContents(from:to:target:)` уточнена как two-panel copy: `target` — каталог-приёмник на принимающем VFS, объект создаётся как `target/<from.name>`; занятый файл-приёмник → `MCError.transferConflict`, существующий каталог — merge. (2) Поля служебных типов, не заданных в SDD, зафиксированы реализацией: `ProgressSink` = `@Sendable`-замыкание от `ProgressUpdate` (completedItems/totalItems?/message), `Conflict.Kind` = targetExists/insideSelfMove/sourceVanished, `ConflictPolicy` = defaultResolution + perTargetPath(+ unwrap applyToAll), `Summary` = счётчики items + bytesTransferred + canceled, `OperationID` = UUID, `Reversal` = renameBack/restoreFromTrash/deleteCreated. (3) `VFSPath` стал `Codable` — востребовано `JournalRecord` (§5.6); пункт (4) «Уточнения T-02» этим закрыт. (4) `InMemoryVFS` — в VFSKit (по карте `11`), тесты там же; Package.swift: `VFSKit → DomainKit` (библиотека и тесты). Имена `createDirectory`/`rename` с пустым/`/`-содержащим name → `MCError.vfsUnsupported` (в духе POSIX EINVAL); InMemory `delete` удаляет каталог целиком (вкл. сам каталог).
 
 ## M1 — Core MVP
 
