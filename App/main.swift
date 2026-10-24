@@ -1,9 +1,27 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import AppKit
-import Foundation
+// Точка входа (заглушка T-01). UI собирается в T-05+ (docs/SDD/09-Milestones-Roadmap.md).
+// Пока исполнимая цель нужна только для smoke-проверки графа: линкует все модули.
+import DomainKit
+import EnginesKit
+import FileOpsKit
+import ListViewKit
+import ServicesKit
+import TerminalKit
+import VFSKit
 
-// T-05 entry point (docs/SDD/12): visible two-panel window, browsable directories.
+let modules = [
+    "DomainKit",
+    "VFSKit",
+    "FileOpsKit",
+    "EnginesKit",
+    "ListViewKit",
+    "TerminalKit",
+    "ServicesKit",
+]
 
-let application = MyCommanderApp()
-application.run()
+// T-07: EnginesKit is a real module now (FilterEngine) — smoke-check its surface.
+print(
+    "MyCommander skeleton (M0). Modules linked: \(modules.joined(separator: ", "))"
+    + " · FilterEngine matches: \(FilterEngine.matches(name: "a.txt", query: "A", style: .substring))"
+)

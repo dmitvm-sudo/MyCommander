@@ -124,4 +124,16 @@ final class PanelsCoordinator: NSObject {
         rightPane.rebind(viewModel: leftModel)
         applyFocus(focus.activePanel)
     }
+
+    // MARK: view modes (F-4 start: full/brief, docs/SDD/12 T-07)
+
+    @objc func mcViewFull(_ sender: Any?) {
+        guard let pane = activePane else { return }
+        pane.viewModel.setViewMode(.full)
+    }
+
+    @objc func mcViewBrief(_ sender: Any?) {
+        guard let pane = activePane else { return }
+        pane.viewModel.setViewMode(.brief)
+    }
 }

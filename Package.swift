@@ -16,7 +16,8 @@ let modules: [(name: String, path: String)] = [
 /// Межмодульные зависимости (docs/SDD/11). Дополняются по мере реализации модулей.
 let moduleDependencyNames: [String: [String]] = [
     "VFSKit": ["DomainKit"],   // T-03: InMemoryVFS конформит VFS из DomainKit
-    "ListViewKit": ["DomainKit"],   // T-05: панель оперирует DomainKit-контрактами (any VFS, SortCriteria)
+    "EnginesKit": ["DomainKit"],   // T-07: FilterEngine оперирует DomainKit-типами (FileMask)
+    "ListViewKit": ["DomainKit", "EnginesKit"],   // T-05 UI + T-07 панель фильтрует через FilterEngine (слой 04)
 ]
 
 /// Зависимости, нужные ТОЛЬКО тест-таргетам (fake-адаптеры VFSKit в UI-тестах:

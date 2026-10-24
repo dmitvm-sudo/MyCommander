@@ -20,6 +20,11 @@ public final class FileListView: NSView {
     private let tableView = PanelTableView()
     private let statusLine = NSTextField(labelWithString: "")
     private var errorNote: String?
+    /// Columns are pre-built once; the view mode (F-4) only attaches/detaches
+    /// the meta columns to the table.
+    private let nameColumn = NSTableColumn(identifier: NSUserInterfaceItemIdentifier(ColumnID.name.rawValue))
+    private let sizeColumn = NSTableColumn(identifier: NSUserInterfaceItemIdentifier(ColumnID.size.rawValue))
+    private let modifiedColumn = NSTableColumn(identifier: NSUserInterfaceItemIdentifier(ColumnID.dateModified.rawValue))
 
     /// Escalated for the owner only: first-responder routing and focus visuals.
     public var listTableView: PanelTableView {
@@ -63,16 +68,9 @@ public final class FileListView: NSView {
         tableView.allowsMultipleSelection = true
         tableView.allowsEmptySelection = true
 
-        let nameColumn = NSTableColumn(identifier: NSUserInterfaceItemIdentifier(ColumnID.name.rawValue))
         nameColumn.title = String(localized: "column.name")
-        let sizeColumn = NSTableColumn(identifier: NSUserInterfaceItemIdentifier(ColumnID.size.rawValue))
         sizeColumn.title = String(localized: "column.size")
-        let modifiedColumn = NSTableColumn(identifier: NSUserInterfaceItemIdentifier(ColumnID.dateModified.rawValue))
         modifiedColumn.title = String(localized: "column.dateModified")
-
-        tableView.addTableColumn(nameColumn)
-        tableView.addTableColumn(sizeColumn)
-        tableView.addTableColumn(modifiedColumn)
 
         nameColumn.width = 320
         nameColumn.minWidth = 120
@@ -85,6 +83,9 @@ public final class FileListView: NSView {
         modifiedColumn.minWidth = 110
         modifiedColumn.resizingMask = [.userResizingMask]
 
+        tableView.addTableColumn(nameColumn)
+        applyViewMode(animating: false)
+
         tableView.dataSource = self
         tableView.delegate = self
 
@@ -92,14 +93,26 @@ public final class FileListView: NSView {
         scrollView.hasVerticalScroller = true
         scrollView.autohidesScrollers = true
 
-        tableView.onOpenRow = { [weak self] in self?.openUnderCursor() }
-        tableView.onGoToParent = { [weak self] in
-            guard let self else { return }
-            self.onActivated?()
-            Task { _ = await self.viewModel.goUp() }
-        }
+        tableView.onKeyCommand = { [weak self] in self?.handleKeyCommand($0) }
         tableView.target = self
         tableView.doubleAction = #selector(openDoubleClicked(_:))
+    }
+
+    /// F-4 (start): full — name + size + date columns; brief — names only
+    /// (maximum density). No column rebuild costs: pre-built columns are
+    /// attached/detached.
+    private func applyViewMode(animating: Bool) {
+        let isFull = viewModel.viewMode == .full
+        let metaColumns = [sizeColumn, modifiedColumn]
+        if isFull {
+            for column in metaColumns where tableView.tableColumns.firstIndex(of: column) == nil {
+                tableView.addTableColumn(column)
+            }
+        } else {
+            for column in metaColumns where tableView.tableColumns.firstIndex(of: column) != nil {
+                tableView.removeTableColumn(column)
+            }
+        }
     }
 
     private func buildLayout() {
@@ -151,10 +164,77 @@ public final class FileListView: NSView {
         openUnderRow(tableView.clickedRow)
     }
 
+    /// Single interpretation point of the panel keyboard (F-1/F-3/F-10, F-4):
+    /// the classifier produced the intent, the view model executes it, and the
+    /// table selection mirrors back through `syncTableSelection`.
+    private func handleKeyCommand(_ command: PanelKeyCommand) {
+        switch command {
+        case .acceptOrOpen:
+            if viewModel.isFilterActive {
+                onActivated?()
+                viewModel.acceptFilter()
+                syncTableSelection()
+                updateStatus()
+            } else {
+                openUnderCursor()
+            }
+        case .goToParent:
+            onActivated?()
+            Task { _ = await viewModel.goUp() }
+        case .toggleSelectionAndMove:
+            onActivated?()
+            viewModel.toggleSelectionUnderCursorAndMove()
+            syncTableSelection()
+            updateStatus()
+        case .selectMasked:
+            onActivated?()
+            viewModel.selectAll()
+            syncTableSelection()
+            updateStatus()
+        case .deselectMasked:
+            onActivated?()
+            viewModel.deselectAll()
+            syncTableSelection()
+            updateStatus()
+        case .invertAll:
+            onActivated?()
+            viewModel.invertAll()
+            syncTableSelection()
+            updateStatus()
+        case .restoreSelection:
+            onActivated?()
+            viewModel.restoreSelection()
+            syncTableSelection()
+            updateStatus()
+        case .filterCharacter(let character):
+            onActivated?()
+            viewModel.appendFilterCharacter(character)
+        case .backspace:
+            onActivated?()
+            if viewModel.isFilterActive {
+                viewModel.deleteLastFilterCharacter()
+            } else {
+                Task { _ = await viewModel.goUp() }
+            }
+        case .escape:
+            guard viewModel.isFilterActive else { return }
+            viewModel.clearFilter()
+        case .viewFull:
+            onActivated?()
+            viewModel.setViewMode(.full)
+        case .viewBrief:
+            onActivated?()
+            viewModel.setViewMode(.brief)
+        case .passToSuper:
+            break   // unreachable: the table already filtered these out
+        }
+    }
+
     // MARK: status
 
     private func contentsChanged() {
         errorNote = nil
+        applyViewMode(animating: false)
         tableView.reloadData()
         tableView.deselectAll(self)
         updateStatus()
@@ -211,6 +291,10 @@ public final class FileListView: NSView {
             localized: "\(viewModel.selectedCount) of \(viewModel.visibleCount) selected"
         )
         var parts = [pathText, selectionText]
+        // F-10: the active filter is always visible in the status line.
+        if viewModel.isFilterActive {
+            parts.append(String(localized: "panel.status.filter \(viewModel.filterQuery)"))
+        }
         if let errorNote {
             parts.append(String(localized: "panel.status.error \(errorNote)"))
         }
@@ -257,33 +341,23 @@ extension FileListView: NSTableViewDataSource, NSTableViewDelegate {
     }
 }
 
-/// NSTableView subclass; owns the panel keyboard semantics that AppKit does not
-/// provide (Enter opens, ⌘↑ climbs). Everything else passes to super.
+/// NSTableView subclass; routes keys through the testable classifier
+/// (`PanelKeys`) — everything unclaimed falls through to AppKit.
 /// Public because `FileListView.listTableView` hands it to the App layer
 /// (first-responder routing); its behaviours live in internal properties.
 public final class PanelTableView: NSTableView {
-    var onOpenRow: (() -> Void)?
-    var onGoToParent: (() -> Void)?
+    var onKeyCommand: ((PanelKeyCommand) -> Void)?
 
     public override func keyDown(with event: NSEvent) {
-        var modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-        modifiers.remove([.function, .capsLock, .numericPad, .shift])
-        switch event.keyCode {
-        case 36, 76:
-            // Return / numeric Enter, no other modifiers.
-            if modifiers.isEmpty {
-                onOpenRow?()
-                return
-            }
-        case 126:
-            // ⌘↑ → parent directory.
-            if modifiers == [.command] {
-                onGoToParent?()
-                return
-            }
-        default:
-            break
+        let command = PanelKeys.classify(
+            keyCode: event.keyCode,
+            modifiers: event.modifierFlags,
+            characters: event.characters
+        )
+        if case .passToSuper = command {
+            super.keyDown(with: event)
+        } else {
+            onKeyCommand?(command)
         }
-        super.keyDown(with: event)
     }
 }

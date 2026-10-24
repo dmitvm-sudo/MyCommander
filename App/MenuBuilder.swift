@@ -37,6 +37,11 @@ enum MenuBuilder {
         viewMenu.addItem(withTitle: String(localized: "menu.focusLeft"), action: #selector(PanelsCoordinator.mcFocusLeft(_:)), keyEquivalent: "1")
         viewMenu.addItem(withTitle: String(localized: "menu.focusRight"), action: #selector(PanelsCoordinator.mcFocusRight(_:)), keyEquivalent: "2")
         viewMenu.addItem(withTitle: String(localized: "menu.swapPanels"), action: #selector(PanelsCoordinator.mcSwapPanels(_:)), keyEquivalent: "u")
+        viewMenu.addItem(.separator())
+        viewMenu.addItem(withTitle: String(localized: "menu.viewFull"), action: #selector(PanelsCoordinator.mcViewFull(_:)), keyEquivalent: "1")
+            .withKeyEquivalentModifierMask(.control)
+        viewMenu.addItem(withTitle: String(localized: "menu.viewBrief"), action: #selector(PanelsCoordinator.mcViewBrief(_:)), keyEquivalent: "2")
+            .withKeyEquivalentModifierMask(.control)
         viewItem.submenu = viewMenu
         main.addItem(viewItem)
 
