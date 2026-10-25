@@ -271,6 +271,21 @@ struct SettingsSchema: Codable, Sendable, Equatable {
 - Подключение: `SftpConnection(config:)` строит App (ServicesKit не знает Citadel);
   при первом accept HostKeyPolicy возвращает fingerprint → `pinHostKey` persist.
 
+*Уточнение T-26 (LocationsStore — F-11, 05 §5.7):*
+- `LocationsSnapshot` (`locations.json`, schemaVersion 1): `bookmarks: [LocationBookmark]`,
+  `recentFolders: [VFSPath]`. Чужая schemaVersion → файл игнорируется целиком.
+- **Закладки**: CRUD (`addBookmark(name:target:panelHint:hotSlot:)` — ⌘D создаёт
+  закладку активного каталога без слота; `update`/`remove`).
+- **Hotlist — 9 слотов** (`assignHotSlot(_:for:)` / `clearHotSlot(_:)` /
+  `hotSlot(_:)`): «двойная адресация» — навигация панели из `panelHint` (если задан),
+  иначе активной панели; target `.connection(id)` → открыть подключение из
+  ConnectionStore.
+- **Недавние папки** (`noteVisit(_:)` / `recentFolders()`): dedupe (перемещение в
+  начало), кольцо глубины 20; источник вызовов — `PanelTabList.onPathVisited`
+  (ListViewKit), срабатывает на каждое отображённое место.
+- **Back/forward per tab** — механизм из T-08 (`PanelTabList.navigateBack/Forward`);
+  T-26 добавляет команды `navigateBack`/`navigateForward` (⌘[ / ⌘]) и пункты меню.
+
 ## 6.10 App target
 
 - `MainWindowController`: layout (панели/терминал/командная строка/fullScreenModel), запоминает геометрию.

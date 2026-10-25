@@ -223,6 +223,9 @@ struct ConnectionRecord: Codable, Identifiable {
 // OpenSSH-контейнере (06 §6.5 уточнение T-24); `passphraseRef` — задел на v1.x.
 // `keychainRef`/`passphraseRef` = UUID-строки записей Keychain (service
 // `MyCommander.connection.<id>`, account `secret`/`passphrase`; 06 §6.9).
+// Уточнение T-26: `target: Either<VFSPath, ConnectionID>` реализован enum'ом
+// `LocationTarget` (`.path(VFSPath)` / `.connection(UUID)`); `panelHint` —
+// enum `LocationSide` (`.left`/`.right`, без зависимости от ListViewKit).
 struct LocationBookmark: Codable { var name: String; var target: Either<VFSPath, ConnectionID>; var panelHint: PanelSide?; var hotSlot: Int? }
 ```
 

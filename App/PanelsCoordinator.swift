@@ -46,6 +46,9 @@ final class PanelsCoordinator: NSObject {
     /// F-13 (T-24): connections CRUD + Keychain secrets + host-key pins.
     let connectionStore = ConnectionStore()
     private var connectionsWindow: ConnectionsWindowController?
+    /// F-11 (T-26): bookmarks, hotlist slots, recent folders.
+    let locationsStore = LocationsStore()
+    private var locationsWindow: LocationsWindowController?
 
     /// Operations engine (F-5, T-10): one executor for the shared local VFS;
     /// per-adapter executors arrive with the VFSRegistry task.
@@ -84,6 +87,13 @@ final class PanelsCoordinator: NSObject {
             leftTabList.seed(with: initialSeedPath)
             rightTabList = makeTabList(for: .right)
             rightTabList.seed(with: initialSeedPath)
+        }
+        // T-26 (F-11): every displayed location lands in «recent folders».
+        leftTabList.onPathVisited = { [weak self] path in
+            self?.locationsStore.noteVisit(path)
+        }
+        rightTabList.onPathVisited = { [weak self] path in
+            self?.locationsStore.noteVisit(path)
         }
 
         leftPane = PanelViewController(tabList: leftTabList)
@@ -367,6 +377,32 @@ final class PanelsCoordinator: NSObject {
         router.register(.reloadPanel) { [weak self] in
             guard let pane = self?.activePane else { return }
             Task { await pane.fileListView.viewModel.reload() }
+        }
+        // T-26 (F-11): per-tab history commands (mechanism — T-08).
+        router.register(.navigateBack) { [weak self] in
+            guard let pane = self?.activePane else { return }
+            _ = pane.tabList.navigateBack()
+        }
+        router.register(.navigateForward) { [weak self] in
+            guard let pane = self?.activePane else { return }
+            _ = pane.tabList.navigateForward()
+        }
+        // T-26 (F-11): bookmarks / hotlist / the Locations window.
+        router.register(.bookmarkAdd) { [weak self] in
+            self?.addBookmarkFromActivePanel()
+        }
+        router.register(.openLocations) { [weak self] in
+            self?.openLocationsWindow()
+        }
+        let hotSlots: [(CommandID, Int)] = [
+            (.hotSlot1, 1), (.hotSlot2, 2), (.hotSlot3, 3),
+            (.hotSlot4, 4), (.hotSlot5, 5), (.hotSlot6, 6),
+            (.hotSlot7, 7), (.hotSlot8, 8), (.hotSlot9, 9),
+        ]
+        for (command, slot) in hotSlots {
+            router.register(command) { [weak self] in
+                self?.navigateHotSlot(slot)
+            }
         }
         router.register(.openItem) { [weak self] in
             guard let pane = self?.activePane else { return }
@@ -695,6 +731,62 @@ final class PanelsCoordinator: NSObject {
             connectionsWindow = controller
             controller.activate()
         }
+    }
+
+    // MARK: Locations (F-11 — T-26; 06 §6.9)
+
+    /// ⌘D: bookmarks the active panel's current directory (no hot slot).
+    private func addBookmarkFromActivePanel() {
+        guard let path = activePane?.fileListView.viewModel.path else { return }
+        let name = path.components.last ?? String(localized: "locations.untitledRoot")
+        locationsStore.addBookmark(name: name, target: .path(path))
+        rebuildMenu()
+    }
+
+    private func openLocationsWindow() {
+        if let window = locationsWindow {
+            window.activate()
+        } else {
+            let controller = LocationsWindowController(store: locationsStore)
+            controller.onNavigate = { [weak self] target in
+                self?.navigate(target: target)
+            }
+            controller.onChanged = { [weak self] in
+                self?.rebuildMenu()
+            }
+            locationsWindow = controller
+            controller.activate()
+        }
+    }
+
+    /// Hotlist slot: the bookmark's `panelHint` panel (двойная адресация) or
+    /// the active one; `.connection` targets open through the SFTP flow.
+    private func navigateHotSlot(_ slot: Int) {
+        guard let bookmark = locationsStore.hotSlot(slot) else { return }
+        navigate(target: bookmark.target, hint: bookmark.panelHint)
+    }
+
+    private func navigate(target: LocationTarget, hint: LocationSide? = nil) {
+        let pane: PanelViewController?
+        switch hint {
+        case .left: pane = leftPane
+        case .right: pane = rightPane
+        case nil: pane = activePane ?? leftPane
+        }
+        guard let pane else { return }
+        switch target {
+        case .path(let path):
+            Task { try? await pane.fileListView.viewModel.openDirectory(at: path) }
+        case .connection(let id):
+            guard let record = connectionStore.record(id: id) else { return }
+            connectSftp(record)
+        }
+    }
+
+    /// T-26: the Locations section carries live slot names — rebuild after
+    /// bookmark changes (menu built once at launch otherwise).
+    func rebuildMenu() {
+        NSApp.mainMenu = MenuBuilder.build(router: router, keymap: keymapStore, locations: locationsStore)
     }
 
     // MARK: SFTP connect (F-13, T-24; 06 §6.5/§6.9)

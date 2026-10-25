@@ -78,6 +78,29 @@ private func tabsMakeList() -> (PanelTabList, InMemoryVFS) {
     #expect(await tabsWaitFor { list.activeTab?.viewModel.path?.components == ["alpha"] })
 }
 
+/// T-26 (F-11): every displayed location fires `onPathVisited` — the App
+/// records recent folders through it (unlike the history, which skips
+/// suppress-recording replays).
+@Test @MainActor func onPathVisitedFiresForEveryDisplayedLocation() async throws {
+    let (list, fake) = tabsMakeList()
+    var visits: [VFSPath] = []
+    list.onPathVisited = { visits.append($0) }
+
+    _ = try await fake.createDirectory("alpha", in: VFSPath(root: fake.id))
+    _ = try await fake.createDirectory("beta", in: VFSPath(root: fake.id))
+    list.seed(with: VFSPath(root: fake.id, components: ["alpha"]))
+    #expect(await tabsWaitFor { !visits.isEmpty })
+
+    // alpha → beta (recorded), then ⌘[ back → alpha (a replay VISIT).
+    try await list.activeTab?.viewModel.openDirectory(
+        at: VFSPath(root: fake.id, components: ["beta"])
+    )
+    #expect(await tabsWaitFor { visits.last?.components == ["beta"] })
+    _ = list.navigateBack()
+    #expect(await tabsWaitFor { visits.last?.components == ["alpha"] })
+    #expect(visits.count >= 3)   // alpha, beta, replayed alpha
+}
+
 @Test @MainActor func closingLastTabIsNoop() async throws {
     let (list, fake) = tabsMakeList()
     let root = VFSPath(root: fake.id)

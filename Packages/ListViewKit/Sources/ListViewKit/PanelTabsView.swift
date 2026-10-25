@@ -104,6 +104,11 @@ public final class PanelTabList {
         self.watchEngine = watchEngine
     }
 
+    /// T-26 (F-11): fires for every DISPLAYED location (including history
+    /// replays) — the App records recent folders through it. Distinct from the
+    /// history recording: a visit is any listing that became visible.
+    public var onPathVisited: ((VFSPath) -> Void)?
+
     public var activeTab: PanelTab? {
         tabs.indices.contains(activeIndex) ? tabs[activeIndex] : nil
     }
@@ -244,6 +249,9 @@ public final class PanelTabList {
             return false
         }
         viewModel.onPathChanged = { [weak self] path in
+            if let path {
+                self?.onPathVisited?(path)   // T-26: recent folders (any listing)
+            }
             guard let self, !self.suppressHistoryRecording, let path else { return }
             guard self.tabs.indices.contains(self.activeIndex) else { return }
             let activeTab = self.tabs[self.activeIndex]

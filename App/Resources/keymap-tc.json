@@ -2,57 +2,604 @@
   "id": "tc",
   "name": "TC/NC classic",
   "entries": [
-    { "command": "goUp", "context": "global", "combo": { "keyCode": 126, "modifiers": ["command"] } },
-    { "command": "goHome", "context": "global", "combo": { "keyCode": 4, "modifiers": ["command", "shift"] } },
-    { "command": "reloadPanel", "context": "global", "combo": { "keyCode": 15, "modifiers": ["command"] } },
-    { "command": "swapPanels", "context": "global", "combo": { "keyCode": 32, "modifiers": ["command"] } },
-    { "command": "newTab", "context": "global", "combo": { "keyCode": 17, "modifiers": ["command"] } },
-    { "command": "closeTab", "context": "global", "combo": { "keyCode": 13, "modifiers": ["command"] } },
-    { "command": "reopenClosedTab", "context": "global", "combo": { "keyCode": 17, "modifiers": ["command", "shift"] } },
-    { "command": "nextTab", "context": "global", "combo": { "keyCode": 48, "modifiers": ["control"] } },
-    { "command": "previousTab", "context": "global", "combo": { "keyCode": 48, "modifiers": ["control", "shift"] } },
-    { "command": "focusLeft", "context": "global", "combo": { "keyCode": 18, "modifiers": ["command"] } },
-    { "command": "focusRight", "context": "global", "combo": { "keyCode": 19, "modifiers": ["command"] } },
-    { "command": "viewFull", "context": "global", "combo": { "keyCode": 18, "modifiers": ["control"] } },
-    { "command": "viewBrief", "context": "global", "combo": { "keyCode": 19, "modifiers": ["control"] } },
-    { "command": "selectAll", "context": "global", "combo": { "keyCode": 0, "modifiers": ["command"] } },
-    { "command": "selectMasked", "context": "global", "combo": { "keyCode": 69, "modifiers": [] } },
-    { "command": "deselectMasked", "context": "global", "combo": { "keyCode": 78, "modifiers": [] } },
-
-    { "command": "cursorUp", "context": "panelList", "combo": { "keyCode": 126, "modifiers": [] } },
-    { "command": "cursorDown", "context": "panelList", "combo": { "keyCode": 125, "modifiers": [] } },
-    { "command": "pageUp", "context": "panelList", "combo": { "keyCode": 116, "modifiers": [] } },
-    { "command": "pageDown", "context": "panelList", "combo": { "keyCode": 121, "modifiers": [] } },
-    { "command": "firstItem", "context": "panelList", "combo": { "keyCode": 115, "modifiers": [] } },
-    { "command": "lastItem", "context": "panelList", "combo": { "keyCode": 119, "modifiers": [] } },
-    { "command": "openItem", "context": "panelList", "combo": { "keyCode": 36, "modifiers": [] } },
-    { "command": "openItem", "context": "panelList", "combo": { "keyCode": 76, "modifiers": [] } },
-    { "command": "goUp", "context": "panelList", "combo": { "keyCode": 126, "modifiers": ["command"] } },
-    { "command": "goUp", "context": "panelList", "combo": { "keyCode": 51, "modifiers": [] } },
-    { "command": "swapPanels", "context": "panelList", "combo": { "keyCode": 48, "modifiers": [] } },
-    { "command": "nextTab", "context": "panelList", "combo": { "keyCode": 48, "modifiers": ["control"] } },
-    { "command": "previousTab", "context": "panelList", "combo": { "keyCode": 48, "modifiers": ["control", "shift"] } },
-    { "command": "viewFull", "context": "panelList", "combo": { "keyCode": 18, "modifiers": ["control"] } },
-    { "command": "viewBrief", "context": "panelList", "combo": { "keyCode": 19, "modifiers": ["control"] } },
-    { "command": "toggleSelectionAndMove", "context": "panelList", "combo": { "keyCode": 114, "modifiers": [] } },
-    { "command": "toggleSelectionAndMove", "context": "panelList", "combo": { "keyCode": 49, "modifiers": [] } },
-    { "command": "selectMasked", "context": "panelList", "combo": { "keyCode": 69, "modifiers": [] } },
-    { "command": "deselectMasked", "context": "panelList", "combo": { "keyCode": 78, "modifiers": [] } },
-    { "command": "invertAll", "context": "panelList", "combo": { "keyCode": 67, "modifiers": [] } },
-    { "command": "restoreSelection", "context": "panelList", "combo": { "keyCode": 75, "modifiers": [] } },
-    { "command": "selectAll", "context": "panelList", "combo": { "keyCode": 0, "modifiers": ["command"] } },
-
-    { "command": "viewFile", "context": "panelList", "combo": { "keyCode": 99, "modifiers": ["function"] } },
-    { "command": "quickLook", "context": "global", "combo": { "keyCode": 16, "modifiers": ["command"] } },
-    { "command": "focusCommandBar", "context": "global", "combo": { "keyCode": 37, "modifiers": ["command"] } },
-    { "command": "openSettings", "context": "global", "combo": { "keyCode": 43, "modifiers": ["command"] } },
-    { "command": "undo", "context": "global", "combo": { "keyCode": 6, "modifiers": ["command"] } },
-    { "command": "editFile", "context": "panelList", "combo": { "keyCode": 118, "modifiers": ["function"] } },
-    { "command": "copyFiles", "context": "panelList", "combo": { "keyCode": 96, "modifiers": ["function"] } },
-    { "command": "moveRenameFiles", "context": "panelList", "combo": { "keyCode": 97, "modifiers": ["function"] } },
-    { "command": "makeDirectory", "context": "panelList", "combo": { "keyCode": 98, "modifiers": ["function"] } },
-    { "command": "itemInfo", "context": "panelList", "combo": { "keyCode": 0, "modifiers": ["control"] } },
-    { "command": "deleteFiles", "context": "panelList", "combo": { "keyCode": 100, "modifiers": ["function"] } },
-    { "command": "deleteFiles", "context": "panelList", "combo": { "keyCode": 51, "modifiers": ["shift"] } }
+    {
+      "command": "goUp",
+      "context": "global",
+      "combo": {
+        "keyCode": 126,
+        "modifiers": [
+          "command"
+        ]
+      }
+    },
+    {
+      "command": "goHome",
+      "context": "global",
+      "combo": {
+        "keyCode": 4,
+        "modifiers": [
+          "command",
+          "shift"
+        ]
+      }
+    },
+    {
+      "command": "reloadPanel",
+      "context": "global",
+      "combo": {
+        "keyCode": 15,
+        "modifiers": [
+          "command"
+        ]
+      }
+    },
+    {
+      "command": "swapPanels",
+      "context": "global",
+      "combo": {
+        "keyCode": 32,
+        "modifiers": [
+          "command"
+        ]
+      }
+    },
+    {
+      "command": "newTab",
+      "context": "global",
+      "combo": {
+        "keyCode": 17,
+        "modifiers": [
+          "command"
+        ]
+      }
+    },
+    {
+      "command": "closeTab",
+      "context": "global",
+      "combo": {
+        "keyCode": 13,
+        "modifiers": [
+          "command"
+        ]
+      }
+    },
+    {
+      "command": "reopenClosedTab",
+      "context": "global",
+      "combo": {
+        "keyCode": 17,
+        "modifiers": [
+          "command",
+          "shift"
+        ]
+      }
+    },
+    {
+      "command": "nextTab",
+      "context": "global",
+      "combo": {
+        "keyCode": 48,
+        "modifiers": [
+          "control"
+        ]
+      }
+    },
+    {
+      "command": "previousTab",
+      "context": "global",
+      "combo": {
+        "keyCode": 48,
+        "modifiers": [
+          "control",
+          "shift"
+        ]
+      }
+    },
+    {
+      "command": "focusLeft",
+      "context": "global",
+      "combo": {
+        "keyCode": 18,
+        "modifiers": [
+          "command"
+        ]
+      }
+    },
+    {
+      "command": "focusRight",
+      "context": "global",
+      "combo": {
+        "keyCode": 19,
+        "modifiers": [
+          "command"
+        ]
+      }
+    },
+    {
+      "command": "viewFull",
+      "context": "global",
+      "combo": {
+        "keyCode": 18,
+        "modifiers": [
+          "control"
+        ]
+      }
+    },
+    {
+      "command": "viewBrief",
+      "context": "global",
+      "combo": {
+        "keyCode": 19,
+        "modifiers": [
+          "control"
+        ]
+      }
+    },
+    {
+      "command": "selectAll",
+      "context": "global",
+      "combo": {
+        "keyCode": 0,
+        "modifiers": [
+          "command"
+        ]
+      }
+    },
+    {
+      "command": "selectMasked",
+      "context": "global",
+      "combo": {
+        "keyCode": 69,
+        "modifiers": []
+      }
+    },
+    {
+      "command": "deselectMasked",
+      "context": "global",
+      "combo": {
+        "keyCode": 78,
+        "modifiers": []
+      }
+    },
+    {
+      "command": "cursorUp",
+      "context": "panelList",
+      "combo": {
+        "keyCode": 126,
+        "modifiers": []
+      }
+    },
+    {
+      "command": "cursorDown",
+      "context": "panelList",
+      "combo": {
+        "keyCode": 125,
+        "modifiers": []
+      }
+    },
+    {
+      "command": "pageUp",
+      "context": "panelList",
+      "combo": {
+        "keyCode": 116,
+        "modifiers": []
+      }
+    },
+    {
+      "command": "pageDown",
+      "context": "panelList",
+      "combo": {
+        "keyCode": 121,
+        "modifiers": []
+      }
+    },
+    {
+      "command": "firstItem",
+      "context": "panelList",
+      "combo": {
+        "keyCode": 115,
+        "modifiers": []
+      }
+    },
+    {
+      "command": "lastItem",
+      "context": "panelList",
+      "combo": {
+        "keyCode": 119,
+        "modifiers": []
+      }
+    },
+    {
+      "command": "openItem",
+      "context": "panelList",
+      "combo": {
+        "keyCode": 36,
+        "modifiers": []
+      }
+    },
+    {
+      "command": "openItem",
+      "context": "panelList",
+      "combo": {
+        "keyCode": 76,
+        "modifiers": []
+      }
+    },
+    {
+      "command": "goUp",
+      "context": "panelList",
+      "combo": {
+        "keyCode": 126,
+        "modifiers": [
+          "command"
+        ]
+      }
+    },
+    {
+      "command": "goUp",
+      "context": "panelList",
+      "combo": {
+        "keyCode": 51,
+        "modifiers": []
+      }
+    },
+    {
+      "command": "swapPanels",
+      "context": "panelList",
+      "combo": {
+        "keyCode": 48,
+        "modifiers": []
+      }
+    },
+    {
+      "command": "nextTab",
+      "context": "panelList",
+      "combo": {
+        "keyCode": 48,
+        "modifiers": [
+          "control"
+        ]
+      }
+    },
+    {
+      "command": "previousTab",
+      "context": "panelList",
+      "combo": {
+        "keyCode": 48,
+        "modifiers": [
+          "control",
+          "shift"
+        ]
+      }
+    },
+    {
+      "command": "viewFull",
+      "context": "panelList",
+      "combo": {
+        "keyCode": 18,
+        "modifiers": [
+          "control"
+        ]
+      }
+    },
+    {
+      "command": "viewBrief",
+      "context": "panelList",
+      "combo": {
+        "keyCode": 19,
+        "modifiers": [
+          "control"
+        ]
+      }
+    },
+    {
+      "command": "toggleSelectionAndMove",
+      "context": "panelList",
+      "combo": {
+        "keyCode": 114,
+        "modifiers": []
+      }
+    },
+    {
+      "command": "toggleSelectionAndMove",
+      "context": "panelList",
+      "combo": {
+        "keyCode": 49,
+        "modifiers": []
+      }
+    },
+    {
+      "command": "selectMasked",
+      "context": "panelList",
+      "combo": {
+        "keyCode": 69,
+        "modifiers": []
+      }
+    },
+    {
+      "command": "deselectMasked",
+      "context": "panelList",
+      "combo": {
+        "keyCode": 78,
+        "modifiers": []
+      }
+    },
+    {
+      "command": "invertAll",
+      "context": "panelList",
+      "combo": {
+        "keyCode": 67,
+        "modifiers": []
+      }
+    },
+    {
+      "command": "restoreSelection",
+      "context": "panelList",
+      "combo": {
+        "keyCode": 75,
+        "modifiers": []
+      }
+    },
+    {
+      "command": "selectAll",
+      "context": "panelList",
+      "combo": {
+        "keyCode": 0,
+        "modifiers": [
+          "command"
+        ]
+      }
+    },
+    {
+      "command": "viewFile",
+      "context": "panelList",
+      "combo": {
+        "keyCode": 99,
+        "modifiers": [
+          "function"
+        ]
+      }
+    },
+    {
+      "command": "quickLook",
+      "context": "global",
+      "combo": {
+        "keyCode": 16,
+        "modifiers": [
+          "command"
+        ]
+      }
+    },
+    {
+      "command": "focusCommandBar",
+      "context": "global",
+      "combo": {
+        "keyCode": 37,
+        "modifiers": [
+          "command"
+        ]
+      }
+    },
+    {
+      "command": "openSettings",
+      "context": "global",
+      "combo": {
+        "keyCode": 43,
+        "modifiers": [
+          "command"
+        ]
+      }
+    },
+    {
+      "command": "undo",
+      "context": "global",
+      "combo": {
+        "keyCode": 6,
+        "modifiers": [
+          "command"
+        ]
+      }
+    },
+    {
+      "command": "editFile",
+      "context": "panelList",
+      "combo": {
+        "keyCode": 118,
+        "modifiers": [
+          "function"
+        ]
+      }
+    },
+    {
+      "command": "copyFiles",
+      "context": "panelList",
+      "combo": {
+        "keyCode": 96,
+        "modifiers": [
+          "function"
+        ]
+      }
+    },
+    {
+      "command": "moveRenameFiles",
+      "context": "panelList",
+      "combo": {
+        "keyCode": 97,
+        "modifiers": [
+          "function"
+        ]
+      }
+    },
+    {
+      "command": "makeDirectory",
+      "context": "panelList",
+      "combo": {
+        "keyCode": 98,
+        "modifiers": [
+          "function"
+        ]
+      }
+    },
+    {
+      "command": "itemInfo",
+      "context": "panelList",
+      "combo": {
+        "keyCode": 0,
+        "modifiers": [
+          "control"
+        ]
+      }
+    },
+    {
+      "command": "deleteFiles",
+      "context": "panelList",
+      "combo": {
+        "keyCode": 100,
+        "modifiers": [
+          "function"
+        ]
+      }
+    },
+    {
+      "command": "deleteFiles",
+      "context": "panelList",
+      "combo": {
+        "keyCode": 51,
+        "modifiers": [
+          "shift"
+        ]
+      }
+    },
+    {
+      "command": "bookmarkAdd",
+      "context": "global",
+      "combo": {
+        "keyCode": 2,
+        "modifiers": [
+          "command"
+        ]
+      }
+    },
+    {
+      "command": "navigateBack",
+      "context": "global",
+      "combo": {
+        "keyCode": 33,
+        "modifiers": [
+          "command"
+        ]
+      }
+    },
+    {
+      "command": "navigateForward",
+      "context": "global",
+      "combo": {
+        "keyCode": 30,
+        "modifiers": [
+          "command"
+        ]
+      }
+    },
+    {
+      "command": "openLocations",
+      "context": "global",
+      "combo": {
+        "keyCode": 37,
+        "modifiers": [
+          "command",
+          "shift"
+        ]
+      }
+    },
+    {
+      "command": "hotSlot1",
+      "context": "global",
+      "combo": {
+        "keyCode": 122,
+        "modifiers": [
+          "option"
+        ]
+      }
+    },
+    {
+      "command": "hotSlot2",
+      "context": "global",
+      "combo": {
+        "keyCode": 120,
+        "modifiers": [
+          "option"
+        ]
+      }
+    },
+    {
+      "command": "hotSlot3",
+      "context": "global",
+      "combo": {
+        "keyCode": 99,
+        "modifiers": [
+          "option"
+        ]
+      }
+    },
+    {
+      "command": "hotSlot4",
+      "context": "global",
+      "combo": {
+        "keyCode": 118,
+        "modifiers": [
+          "option"
+        ]
+      }
+    },
+    {
+      "command": "hotSlot5",
+      "context": "global",
+      "combo": {
+        "keyCode": 96,
+        "modifiers": [
+          "option"
+        ]
+      }
+    },
+    {
+      "command": "hotSlot6",
+      "context": "global",
+      "combo": {
+        "keyCode": 97,
+        "modifiers": [
+          "option"
+        ]
+      }
+    },
+    {
+      "command": "hotSlot7",
+      "context": "global",
+      "combo": {
+        "keyCode": 98,
+        "modifiers": [
+          "option"
+        ]
+      }
+    },
+    {
+      "command": "hotSlot8",
+      "context": "global",
+      "combo": {
+        "keyCode": 100,
+        "modifiers": [
+          "option"
+        ]
+      }
+    },
+    {
+      "command": "hotSlot9",
+      "context": "global",
+      "combo": {
+        "keyCode": 101,
+        "modifiers": [
+          "option"
+        ]
+      }
+    }
   ]
 }

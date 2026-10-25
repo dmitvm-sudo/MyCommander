@@ -73,6 +73,21 @@ public enum CommandID: String, Codable, Sendable, CaseIterable, Hashable {
 
     // Connections (F-13, T-24).
     case connectSftp
+
+    // Locations (F-11, T-26).
+    case bookmarkAdd
+    case openLocations
+    case navigateBack
+    case navigateForward
+    case hotSlot1
+    case hotSlot2
+    case hotSlot3
+    case hotSlot4
+    case hotSlot5
+    case hotSlot6
+    case hotSlot7
+    case hotSlot8
+    case hotSlot9
 }
 
 /// Where a binding is interpreted (docs/SDD/05 §5.7 `CommandContext`).
