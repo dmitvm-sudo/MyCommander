@@ -33,7 +33,7 @@
    - прогресс per-item + агрегированный; пауза — синхронный семафор в copy loop; cancel — `Task.cancel` + cleanup temp.
    - delete: tree-walk bottom-up; toTrash через `FileManager.trashItem` (локальный); для VFS без trash — прямое удаление с подтверждением.
 
-**Journal:** каждое совершившееся изменение (`renameBackPath`, `createdPath`, `trashMoveRecord`) пишется в `JournalStorage` (кольцевой буфер, 20 записей). Undo — реверс-план исполняется тем же `OperationExecutor` (конфликты задают те же диалоги).
+**Journal:** каждое совершившееся изменение (`renameBackPath`, `createdPath`, `trashMoveRecord`) пишется в `JournalStorage` (кольцевой буфер, 20 записей). Undo — реверс-план исполняется тем же `OperationExecutor` (конфликты задают те же диалоги). *Уточнение T-20 (v1):* план строит `UndoPlanner` (FileOpsKit) по `JournalRecord.popLast`; команда `.undo` (⌘Z, global, меню «menu.undo» в Operations); mkdir-записи append-ит App при успехе `createDirectory`.
 
 **Персистентность очереди:** в рамках сессии (crash → восстановить список незавершённых вопросом «добить?»).
 

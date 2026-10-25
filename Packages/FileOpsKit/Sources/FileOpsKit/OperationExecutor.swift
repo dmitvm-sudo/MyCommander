@@ -181,6 +181,13 @@ public actor OperationExecutor: OperationExecutorProtocol {
             for index in plan.items.indices {
                 await failItem(run, index: index, error: .vfsUnsupported(plan.items[index].source.root, "link operations are not implemented yet"))
             }
+        case .mkdir:
+            // Journal-only op (T-20/F-6): mkdir is committed by the App itself
+            // (`VFS.createDirectory`); a planned `.mkdir` never executes as a
+            // transfer — every item fails visibly (06 §6.2 уточнение T-20).
+            for index in plan.items.indices {
+                await failItem(run, index: index, error: .vfsUnsupported(plan.items[index].source.root, "mkdir operations are not executed by the transfer engine"))
+            }
         }
 
         run.summary.canceled = Task.isCancelled || run.summary.canceled

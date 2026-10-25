@@ -413,6 +413,12 @@ final class PanelsCoordinator: NSObject {
         router.register(.itemInfo) { [weak self] in
             self?.openItemInfo()
         }
+
+        // F-6 (T-20): ⌘Z — undo the newest journal record through the same
+        // planner/conflicts/executor path as forward operations.
+        router.register(.undo) { [weak self] in
+            self?.undoLastJournalRecord()
+        }
     }
 
     // MARK: Command bar driver (⌘L — F-17а, T-14; 06 §6.8 v1)
@@ -482,7 +488,15 @@ final class PanelsCoordinator: NSObject {
                 return
             }
             do {
-                _ = try await vfs.createDirectory(parts[0], in: viewModel.path ?? homePath)
+                let directory = try await vfs.createDirectory(parts[0], in: viewModel.path ?? homePath)
+                // F-6 (T-20): mkdir never routes through the transfer engine —
+                // the App journals its own committed createDirectory here
+                // (05 §5.6: the mkdir reversal is `deleteCreated`).
+                transferJournal.append(JournalRecord(
+                    timestamp: Date(),
+                    op: .mkdir,
+                    reversals: [.deleteCreated(path: directory)]
+                ))
                 await viewModel.reload()
             } catch let error as MCError {
                 commandBar.appendOutput(error.localizedDescription, isError: true)
@@ -890,6 +904,43 @@ final class PanelsCoordinator: NSObject {
                 _ = error
             }
         }
+    }
+
+    /// F-6 (T-20): ⌘Z — undo the newest journaled change. The record is popped
+    /// BEFORE the reverse plan runs; a plan that cannot be built re-appends the
+    /// record and reports «undo недоступен» (05 §5.6 уточнение T-20). Cancelling
+    /// the conflicts dialog leaves the record popped — lossy undo v1.
+    private func undoLastJournalRecord() {
+        Task {
+            guard let record = transferJournal.popLast() else {
+                presentUndoUnavailable()
+                return
+            }
+            guard let plan = await UndoPlanner.plan(record: record, source: fileSystem, destination: fileSystem) else {
+                transferJournal.append(record)
+                presentUndoUnavailable()
+                return
+            }
+            var policy = ConflictPolicy()
+            if !plan.conflicts.isEmpty {
+                let rows = await ConflictModels.preparePreviewRows(
+                    plan.conflicts,
+                    source: fileSystem,
+                    destination: fileSystem
+                )
+                guard let chosen = ConflictDialogController.run(rows: rows) else { return }
+                policy = chosen
+            }
+            let (id, stream) = await operationExecutor.enqueue(plan, policy: policy)
+            showProgress(id: id, operation: stream, itemCount: plan.items.count)
+        }
+    }
+
+    private func presentUndoUnavailable() {
+        let alert = NSAlert()
+        alert.messageText = String(localized: "undo.unavailable")
+        alert.alertStyle = .informational
+        _ = alert.runModal()
     }
 
     private func showProgress(id: OperationID, operation stream: AsyncStream<TransferEvent>, itemCount: Int) {

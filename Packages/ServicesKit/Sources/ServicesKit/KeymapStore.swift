@@ -53,6 +53,8 @@ public enum CommandID: String, Codable, Sendable, CaseIterable, Hashable {
     case moveRenameFiles
     case makeDirectory
     case deleteFiles
+    // F-6 (T-20): undo the newest journal record (⌘Z, global dispatch).
+    case undo
     // Info/properties (F-19, ⌃A / ремап).
     case itemInfo
     case openSettings

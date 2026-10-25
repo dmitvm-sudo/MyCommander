@@ -37,6 +37,15 @@ public final class JournalStorage: @unchecked Sendable {
         return box.records
     }
 
+    /// Undo semantics (T-20/F-6): take the newest record out of the ring.
+    /// Returns `nil` on an empty journal. A failed undo re-appends the record
+    /// at the top (App side), so the next ⌘Z retries it or moves on.
+    public func popLast() -> JournalRecord? {
+        box.lock.lock()
+        defer { box.lock.unlock() }
+        return box.records.popLast()
+    }
+
     public func clear() {
         box.lock.lock()
         box.records.removeAll()

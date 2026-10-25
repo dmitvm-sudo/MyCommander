@@ -11,6 +11,10 @@ public enum TransferOpKind: Codable, Sendable, Hashable {
     case move
     case delete
     case link
+    /// Journal-only op (T-20/F-6): mkdir is committed by App through
+    /// `VFS.createDirectory` and needs an undo record; the executor refuses
+    /// a planned `.mkdir` like `.link` (mkdir does not execute as a transfer).
+    case mkdir
 }
 
 /// One planned unit: the resolved source object (tree already expanded by Planner)

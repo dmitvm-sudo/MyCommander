@@ -166,6 +166,18 @@ struct JournalRecord: Codable, Sendable {
 }
 ```
 Undo поддерживается только reversal-операциями выше (см. F-6); всё остальное — «undo недоступен».
+*Уточнение T-20 (F-6 v1):* в `TransferOpKind` добавлен `case mkdir` — mkdir ив App
+(⌘B / commandBar → `VFS.createDirectory`) журналируется самим App (reversal
+`deleteCreated`), executor при плане с op == `.mkdir` отказывает как для `.link`.
+Undo — по последней записи: `JournalStorage.popLast()` → `UndoPlanner.plan(record,
+source:destination:) -> TransferPlan?` (FileOpsKit): `renameBack` — план `.move`
+на `parent.at/previousName` (цель и конфликты строятся вручную), `restoreFromTrash`
+— план `.move` из `VFSPath(root: sourceVFS.id, components: …trashURL)`,
+`deleteCreated` — через `TransferPlanner.planDelete`. Реверсов ноль (permanent
+delete) → план nil → App показывает «undo недоступен» и возвращает запись
+в журнал (re-append). Пересечение с живым состоянием — обычный путь `ConflictDialog`
+(apply-to-all справедлив и в undo); запись снимается pop-ом до исполнения —
+отмена в конфлики-диалоге делает undo lossy (v1).
 
 ## 5.7 Настройки и персистентность (ServicesKit)
 
