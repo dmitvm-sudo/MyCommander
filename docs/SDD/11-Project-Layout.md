@@ -51,8 +51,9 @@ MyCommander/
 │   ├── Archive/TarReader.swift      # SWCompression (tar/gz/xz/bz2)
 │   ├── Archive/ZipWriter.swift      # ZIPFoundation: Pack-профиля
 │   ├── Archive/SevenZipReader.swift # SWCompression (v1.0 SHOULD)
-│   ├── Sftp/SftpVFS.swift           # Citadel-адаптер
-│   ├── Sftp/SftpConnection.swift    # lifetime/KA/backoff/hostKey pinning
+│   ├── Sftp/SftpConnection.swift    # T-23: lifetime/connect/errno-маппинг
+│   ├── Sftp/HostKeyPolicy.swift     # T-24: fingerprint + pinning-policy (custom delegate)
+│   ├── Sftp/SftpPrivateKey.swift    # T-24: OpenSSH Ed25519 (незашифр.) парсер
 │   ├── Sftp/SftpVFS.swift           # T-23: SFTP-адаптер (5.3-операции, seekable, staging)
 │   ├── SearchResultVFS.swift        # виртуальная папка результатов поиска
 │   ├── VFSRegistry.swift            # инстансы, mountedVolumes()

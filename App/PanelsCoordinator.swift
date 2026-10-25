@@ -43,6 +43,9 @@ final class PanelsCoordinator: NSObject {
     private let archiveRegistry = VFSRegistry()
     /// Session persistence (F-2: tabs survive relaunch).
     private let sessionStore: SessionStore
+    /// F-13 (T-24): connections CRUD + Keychain secrets + host-key pins.
+    let connectionStore = ConnectionStore()
+    private var connectionsWindow: ConnectionsWindowController?
 
     /// Operations engine (F-5, T-10): one executor for the shared local VFS;
     /// per-adapter executors arrive with the VFSRegistry task.
@@ -675,6 +678,132 @@ final class PanelsCoordinator: NSObject {
         router.register(.openSettings) { [weak self] in
             self?.openSettingsWindow()
         }
+        // F-13 (T-24): the reusable Connections window.
+        router.register(.connectSftp) { [weak self] in
+            self?.openConnectionsWindow()
+        }
+    }
+
+    private func openConnectionsWindow() {
+        if let window = connectionsWindow {
+            window.activate()
+        } else {
+            let controller = ConnectionsWindowController(store: connectionStore)
+            controller.onConnect = { [weak self] record in
+                self?.connectSftp(record)
+            }
+            connectionsWindow = controller
+            controller.activate()
+        }
+    }
+
+    // MARK: SFTP connect (F-13, T-24; 06 §6.5/§6.9)
+
+    /// Opens a Connections-window record as an SFTP panel: connection →
+    /// SftpVFS → registry → interlude-VM on the active tab (the T-21 swap
+    /// pattern; ⌘↑ exits back to the host listing).
+    private func connectSftp(_ record: ConnectionRecord) {
+        Task { await performConnectSftp(record) }
+    }
+
+    private func performConnectSftp(_ record: ConnectionRecord) async {
+        do {
+            let auth = try sftpAuthMethod(for: record)
+            let policy = HostKeyPolicy(pinnedFingerprint: record.hostKeyFingerprint)
+            policy.decisionHandler = { [weak self] event in
+                await self?.hostKeyDecision(event, record: record) ?? false
+            }
+            let config = SftpConnectionConfig(
+                host: record.host,
+                port: record.port,
+                username: record.username,
+                auth: auth,
+                hostKeyValidator: .custom(policy)
+            )
+            let connection = try await SftpConnection(config: config)
+            let vfs = SftpVFS(connection: connection)
+            await archiveRegistry.register(vfs)
+
+            guard let pane = activePane ?? leftPane else { return }
+            guard let host = pane.tabList.activeTab?.viewModel else { return }
+            let side: FocusController.PanelSide = pane === leftPane ? .left : .right
+            let viewModel = PanelViewModel(source: vfs)
+            wireArchiveEnter(viewModel, side: side)
+            viewModel.onRootExit = { [weak pane, weak host, weak viewModel] in
+                guard let pane, let host, let viewModel else { return }
+                guard pane.fileListView.viewModel === viewModel else { return }
+                _ = pane.swapActiveTabViewModel(host)
+            }
+            try await viewModel.openDirectory(at: VFSPath(root: vfs.id))
+            pane.swapActiveTabViewModel(viewModel)
+        } catch let error as MCError {
+            presentConnectionFailure(error, record: record)
+        } catch {
+            presentConnectionFailure(.unexpected(underlying: error), record: record)
+        }
+    }
+
+    /// Auth material for the connection (06 §6.5): the password rides from the
+    /// Keychain; Ed25519 keys come from the OpenSSH container file (v1:
+    /// unencrypted; 06 §6.5 уточнение T-24).
+    private func sftpAuthMethod(for record: ConnectionRecord) throws -> SftpAuthMethod {
+        switch record.auth {
+        case .password:
+            guard let secret = connectionStore.password(for: record.id), !secret.isEmpty else {
+                throw MCError.vfsUnsupported(
+                    VFSInstanceID(kind: .sftp, specID: record.host),
+                    "no password stored for this connection"
+                )
+            }
+            return .password(secret)
+        case .privateKey(let path, _):
+            let content = try String(contentsOfFile: path, encoding: .utf8)
+            let key = try SftpPrivateKey.ed25519(fromOpenSSH: content)
+            return .ed25519(privateKey: key)
+        }
+    }
+
+    /// Host-key decisions (F-13): first use — the regular trust dialog;
+    /// fingerprint change — the critical MITM red screen. Accepting a first
+    /// use or a changed key PINS the fingerprint in the store.
+    private func hostKeyDecision(_ event: HostKeyEvent, record: ConnectionRecord) async -> Bool {
+        switch event {
+        case .firstUse(let fingerprint):
+            let alert = NSAlert()
+            alert.messageText = String(localized: "connections.hostkey.firstUse.title")
+            alert.informativeText = String(
+                localized: "connections.hostkey.firstUse.\(record.host)\(fingerprint)"
+            )
+            alert.addButton(withTitle: String(localized: "connections.hostkey.trust"))
+            alert.addButton(withTitle: String(localized: "connections.hostkey.abort"))
+            let trusted = alert.runModal() == .alertFirstButtonReturn
+            if trusted {
+                connectionStore.pinHostKey(id: record.id, fingerprint: fingerprint)
+            }
+            return trusted
+        case .changed(let pinned, let presented):
+            let alert = NSAlert()
+            alert.alertStyle = .critical
+            alert.messageText = String(localized: "connections.hostkey.changed.title")
+            alert.informativeText = String(
+                localized: "connections.hostkey.changed.\(record.host)\(pinned)\(presented)"
+            )
+            alert.addButton(withTitle: String(localized: "connections.hostkey.abort"))
+            alert.addButton(withTitle: String(localized: "connections.hostkey.retrust"))
+            let reTrust = alert.runModal() == .alertSecondButtonReturn
+            if reTrust {
+                connectionStore.pinHostKey(id: record.id, fingerprint: presented)
+            }
+            return reTrust
+        }
+    }
+
+    private func presentConnectionFailure(_ error: MCError, record: ConnectionRecord) {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = String(localized: "connections.failure.title")
+        alert.informativeText = "\(record.name): \(error.errorDescription ?? String(describing: error))"
+        alert.runModal()
     }
 
     private func openSettingsWindow() {

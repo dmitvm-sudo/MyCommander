@@ -25,6 +25,7 @@ enum MenuBuilder {
             ItemSpec(titleKey: "menu.parentDirectory", command: .goUp),
             ItemSpec(titleKey: "menu.home", command: .goHome),
             ItemSpec(titleKey: "menu.reload", command: .reloadPanel),
+            ItemSpec(titleKey: "menu.connectSftp", command: .connectSftp),
             ItemSpec(titleKey: "menu.openSettings", command: .openSettings),
         ]),
         SectionSpec(titleKey: "menu.tabs", items: [

@@ -135,6 +135,24 @@ temp-каталога = «живой SFTP-тест-сервер» без вне�
 Citadel так и работает в своих собственных тестах); отдельный внешний сервер
 (env SSH_HOST…) не требуется — тест-стенд поднимается в самом тест-процессе.
 
+*Уточнение T-24 (host-key policy + ключи):* **HostKeyPolicy**
+(`VFSKit/Sftp/HostKeyPolicy.swift`) — `NIOSSHClientServerAuthenticationDelegate`,
+подключается к Citadel через `SSHHostKeyValidator.custom(policy)` (Citadel не даёт
+другой точки интеграции). **Fingerprint**: SHA-256 по wire-формату ключа
+(`NIOSSHPublicKey.write(to:)` — публичный writer формата ssh-string), отображение
+OpenSSH-стиль `SHA256:<base64 без padding>`. **Поток**: fingerprint совпал с пином →
+succeed молча; пина нет → `.firstUse(fp)` → async decision-handler
+(`(HostKeyEvent) async -> Bool`; App показывает NSAlert «accept/abort», при accept
+ConnectionStore пинит fp); пин есть, fp другой → `.changed(old, new)` → handler
+(App — красный `NSAlert.critical` MITM-warning; decline → promise.fail → handshake
+рвётся). VFSKit остаётся без AppKit — решения принимает App через handler.
+**Приватные ключи** (`VFSKit/Sftp/SftpPrivateKey.swift`): v1 — только Ed25519,
+незашифрованный OpenSSH-контейнер (`openssh-key-v1`, cipher `none`); зашифрованные
+(bcrypt-KDF) и PEM/классические форматы → понятная `MCError.unsupported`-ошибка при
+connect (passphrase хранится в Keychain по контракту, но v1 её не применяет —
+задокументированная рамка, issue на v1.x). RSA/ECDSA-ключи серверных хостов — через
+wire-format fingerprint работают без ограничений (пининг не зависит от алгоритма).
+
 ## 6.6 EnginesKit
 
 - **FilterEngine** (quick filter F-10): подстрока/fuzzy (скорл-Damerau-подобная, но простая prefix-matching по умолчанию substring), обработка ≤ 50 мс на 50k (по Int-index, без создания строк повторно; мемоизация префикса ввода).
@@ -220,6 +238,22 @@ struct SettingsSchema: Codable, Sendable, Equatable {
 - **LocationsStore** (закладки/Hotlist/история per-tab; hot-Slots 9);
 - **ConnectionStore** + Keychain (kSecClassGenericPassword, service `MyCommander.connection.<id>`) — никогда не в JSON;
 - **SessionStore**: перенастраиваемый список табов к моменту выхода (restore on launch).
+
+*Уточнение T-24 (ConnectionStore — F-13, 05 §5.7):*
+- `ConnectionsSnapshot` (`connections.json`, schemaVersion 1): `records: [ConnectionRecord]`.
+  schemaVersion ≠ 1 → файл игнорируется целиком (по образцу SettingsStore); секретов в JSON
+  нет никогда — только `keychainRef` (имя записи: UUID строки).
+- **Keychain**: `KeychainStoring` протокол (`save/read/delete(service:account:) -> Data?`) +
+  `KeychainBridge` (SecItem Add/CopyMatching/Update/Delete, kSecClassGenericPassword,
+  service `MyCommander.connection.<id>`, account `secret` — пароль; `passphrase` — парольная
+  фраза ключа). Протокол — seam для тестов (in-memory fake); реальный Keychain —
+  env-gated smoke (`MC_KEYCHAIN_SMOKE=1`).
+- **CRUD**: `create(record:secret:)` / `update(record:secret:)` / `delete(id)` (чистит
+  keychain-записи) / `records()`; `secret(for:)` / `setSecret(_:for:)`;
+  `pinHostKey(id:fingerprint:)` / `clearHostKeyPin(id)`. Атомарная запись JSON
+  (`.atomic`), каталог `~/Library/Application Support/MyCommander/`.
+- Подключение: `SftpConnection(config:)` строит App (ServicesKit не знает Citadel);
+  при первом accept HostKeyPolicy возвращает fingerprint → `pinHostKey` persist.
 
 ## 6.10 App target
 

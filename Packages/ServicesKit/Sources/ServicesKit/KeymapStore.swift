@@ -70,6 +70,9 @@ public enum CommandID: String, Codable, Sendable, CaseIterable, Hashable {
     case viewBrief
     case focusLeft
     case focusRight
+
+    // Connections (F-13, T-24).
+    case connectSftp
 }
 
 /// Where a binding is interpreted (docs/SDD/05 §5.7 `CommandContext`).

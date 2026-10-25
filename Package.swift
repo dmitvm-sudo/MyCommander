@@ -30,7 +30,7 @@ let modules: [(name: String, path: String)] = [
 
 /// Межмодульные зависимости (docs/SDD/11). Дополняются по мере реализации модулей.
 let moduleDependencyNames: [String: [String]] = [
-    "VFSKit": ["DomainKit", "ZIPFoundation", "SWCompression", "Citadel", "NIOConcurrencyHelpers"],   // T-21: ArchiveVFS (zip read — ZIPFoundation; gz/xz/bz2 — SWCompression); InMemoryVFS конформит VFS; T-23: SftpVFS/SftpConnection (Citadel + NIOConcurrencyHelpers)
+    "VFSKit": ["DomainKit", "ZIPFoundation", "SWCompression", "Citadel", "NIOSSH", "NIOConcurrencyHelpers"],   // T-21: ArchiveVFS (zip read — ZIPFoundation; gz/xz/bz2 — SWCompression); InMemoryVFS конформит VFS; T-23: SftpVFS/SftpConnection (Citadel + NIOConcurrencyHelpers); T-24: HostKeyPolicy (NIOSSH delegate)
     "EnginesKit": ["DomainKit"],   // T-07: FilterEngine оперирует DomainKit-типами (FileMask)
     "ListViewKit": ["DomainKit", "EnginesKit", "FileOpsKit"],   // T-05 UI + T-07 фильтр + T-10 ProgressWindow (слои 04)
     "ServicesKit": ["DomainKit"],   // T-08: SessionStore сериализует VFSPath (§5.1 Codable)
@@ -42,8 +42,8 @@ let moduleDependencyNames: [String: [String]] = [
 /// реальный листинг через LocalVFS/InMemoryVFS без подключения VFSKit к библиотеке).
 let testDependencyNames: [String: [String]] = [
     "ListViewKit": ["VFSKit"],
-    "VFSKit": ["NIOSSH"],   // T-23: SftpVFSTests (in-process SSHServer fixture)
-]
+    "VFSKit": ["NIOEmbedded"],   // T-24: EmbeddedEventLoop для promise-тестов политики
+]   // NIOSSH VFSKitTests получает через moduleDependencyNames["VFSKit"] (одно ребро — иначе SPM duplicate-product warning)
 
 /// T-23: byName-зависимость «NIOConcurrencyHelpers» (продукт транзитивного до
 /// сих пор swift-nio) не резолвится — нужна явная product-ссылка.
@@ -52,7 +52,11 @@ func dependency(named name: String) -> Target.Dependency {
         return .product(name: "NIOConcurrencyHelpers", package: "swift-nio")
     }
     if name == "NIOSSH" {
+        // byName не резолвит (см. T-23 урок) — только явная product-ссылка.
         return .product(name: "NIOSSH", package: "swift-nio-ssh")
+    }
+    if name == "NIOEmbedded" {
+        return .product(name: "NIOEmbedded", package: "swift-nio")
     }
     return Target.Dependency.byName(name: name)
 }

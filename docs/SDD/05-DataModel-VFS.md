@@ -217,6 +217,12 @@ struct ConnectionRecord: Codable, Identifiable {
     var auth: AuthMethod                    // .password(keychainRef) / .privateKey(path, passphraseRef)
     var hostKeyFingerprint: String?         // pinning на первый accept
 }
+// Уточнение T-24: `AuthMethod` — Codable enum: `.password(keychainRef: String)` /
+// `.privateKey(path: String, passphraseRef: String?)`; `kind` — enum `ConnectionKind`
+// с единственным case `.sftp` (v1). Ed25519-ключи только в незашифрованном
+// OpenSSH-контейнере (06 §6.5 уточнение T-24); `passphraseRef` — задел на v1.x.
+// `keychainRef`/`passphraseRef` = UUID-строки записей Keychain (service
+// `MyCommander.connection.<id>`, account `secret`/`passphrase`; 06 §6.9).
 struct LocationBookmark: Codable { var name: String; var target: Either<VFSPath, ConnectionID>; var panelHint: PanelSide?; var hotSlot: Int? }
 ```
 
