@@ -35,6 +35,22 @@ public final class FileListView: NSView {
     /// to route active-panel focus (`FocusController`).
     public var onActivated: (() -> Void)?
 
+    /// DnD source hook (§6.1 v1 — T-16, F-18): the App layer builds the
+    /// `NSPasteboardItem` for one dragged row (file URL + VFSPath payload);
+    /// returning `nil` drops the row out of the drag (non-local sources).
+    public var onPasteboardWriterForRow: (@MainActor (Int) -> (any NSPasteboardWriting)?)?
+
+    /// DnD destination hook: the panel accepted a drop. `isInternal` = the
+    /// source was a FileListView of this app (panel↔panel), `wantsCopy`
+    /// honours the ⌥ modifier for internal drags; Finder drags are always
+    /// copy (the App planner decides from the payload kinds).
+    public var onDropReceived: (@MainActor (
+        _ urls: [URL],
+        _ paths: [VFSPath],
+        _ isInternal: Bool,
+        _ wantsCopy: Bool
+    ) -> Void)?
+
     public init(viewModel: PanelViewModel, iconCache: ItemCache = ItemCache()) {
         self.viewModel = viewModel
         self.iconCache = iconCache
@@ -104,6 +120,10 @@ public final class FileListView: NSView {
         tableView.onKeyCommand = { [weak self] in self?.handleKeyCommand($0) }
         tableView.target = self
         tableView.doubleAction = #selector(openDoubleClicked(_:))
+
+        // F-18 (T-16): the whole panel is the drop target («домашняя панель —
+        // дефолт-цель»), the row drag goes through the data-source writer.
+        registerForDraggedTypes(DragBridge.acceptedTypes)
     }
 
     /// F-4 (start): full — name + size + date columns; brief — names only
@@ -346,6 +366,63 @@ extension FileListView: NSTableViewDataSource, NSTableViewDelegate {
         viewModel.setCursor(tableView.selectedRow)
         viewModel.setSelection(paths)
         updateStatus()
+    }
+
+    /// Modern drag source: per-row `NSPasteboardWriting` from the App hook
+    /// (`onPasteboardWriterForRow`). Rows without a writer are skipped; if no
+    /// row produces one, NSTableView does not start a drag at all.
+    public func tableView(
+        _ tableView: NSTableView,
+        pasteboardWriterForRow rowIndex: Int
+    ) -> (any NSPasteboardWriting)? {
+        onPasteboardWriterForRow?(rowIndex)
+    }
+}
+
+// MARK: Drag destination (T-16 / F-18 — §6.1 v1)
+
+/// держится в `NSApp.currentEvent` (NSDraggingInfo не отдаёт событие).
+extension FileListView {
+    /// Self-drop (drag started in this very panel) is refused; a drag from
+    /// *another* panel proposes move (⌥ = copy); Finder drags are copy.
+    private func dragOperation(for info: any NSDraggingInfo) -> NSDragOperation {
+        if let source = info.draggingSource as? FileListView, source === self {
+            return NSDragOperation()
+        }
+        let isInternal = info.draggingSource is FileListView
+        let optionHeld = NSApp.currentEvent?.modifierFlags.contains(NSEvent.ModifierFlags.option) == true
+        let proposed: NSDragOperation = isInternal
+            ? (optionHeld ? .copy : .move)
+            : .copy
+        // Keep the panel-item/fileURL contract: only genuinely accepted kinds.
+        let pasteboard = info.draggingPasteboard
+        let isPanelPayload = pasteboard.data(forType: DragBridge.itemType) != nil
+        let isFileURLPayload = pasteboard.data(forType: .fileURL) != nil
+        if !isPanelPayload, !isFileURLPayload {
+            return NSDragOperation()
+        }
+        return proposed
+    }
+
+    public override func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
+        dragOperation(for: sender)
+    }
+
+    public override func draggingUpdated(_ sender: any NSDraggingInfo) -> NSDragOperation {
+        dragOperation(for: sender)
+    }
+
+    public override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
+        let operation = dragOperation(for: sender)
+        guard operation != NSDragOperation() else { return false }
+        let pasteboard = sender.draggingPasteboard
+        let urls = DragBridge.readURLs(pasteboard)
+        let paths = DragBridge.readPaths(pasteboard)
+        guard !urls.isEmpty || !paths.isEmpty else { return false }
+        let isInternal = sender.draggingSource is FileListView
+        let wantsCopy = isInternal && operation == .copy
+        onDropReceived?(urls, paths, isInternal, wantsCopy)
+        return true
     }
 }
 

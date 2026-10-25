@@ -4,6 +4,10 @@
 
 ## 6.1 Панель файла (ListViewKit)
 
+- **Контракт v1 (T-16 — DnD мост F-18):** транспорт NSPasteboard, чистая логика в `DragBridge` (tests): тип `com.mycommander.panel-item.v1`, запись через `entry(fileURL:path:) → NSPasteboardItem` (`.fileURL` — URL, item-тип — JSON `VFSPath`), чтение `readURLs` / `readPaths` (per-item compactMap + `JSONDecoder`). `displayURL` уже в §5.1.
+- `FileListView` — drag source/destination без знаний о VFS: `onPasteboardWriterForRow: (Int) -> (any NSPasteboardWriting)?` (App строит item; non-local → nil, drag не начинается), `onDropReceived: (urls:, paths:, isInternal:, wantsCopy:) -> Void`. Destination-точки: `registerForDraggedTypes([.fileURL, itemType])`, `draggingUpdated` — self-source (`draggingSource as? FileListView === self`) → отказ; внешний источник (Finder) → `.copy`; внутренний — `.move` (⌥ → `.copy`); бейджи copy/move курсора рисуются системой по возвращённой NSDragOperation.
+- **Семантика (App-драйвер):** Finder→панель — copy (план поверх `TransferPlanner.planCopy` + `OperationExecutor.enqueue`, конфликты через `ConflictDialog`); panel↔panel — move по умолчанию, ⌥ = copy; самодроп — отказ; non-local drag-out — не тянет (v1 — только LocalVFS; архив/SFTP drag — следующая версия); «drop в архив — extract» — после ArchiveVFS (M2). Drop-target — панель целиком (F-18 «домашняя панель — дефолт-цель»); после операции панель обновляется watcher'ом.
+
 **Структура:**
 - `PanelViewController` (NSViewController) держит `PanelViewModel`, `FileListView: NSTableView` (cell-based, с переиспользуемыми ячейками), страницу табов (`NSStackView` + кастомные tab cells), статус-строку (путь, запись «n of m selected», фильтр-индикатор, режим доступа Safe/FDA).
 - `PanelViewModel` (MainActor):

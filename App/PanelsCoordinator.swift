@@ -69,6 +69,7 @@ final class PanelsCoordinator: NSObject {
         rightPane = PanelViewController(tabList: rightTabList)
         leftPane.fileListView.onActivated = { [weak self] in self?.focus.activate(.left) }
         rightPane.fileListView.onActivated = { [weak self] in self?.focus.activate(.right) }
+        wireDragEngines()
         focus.onFocusChanged = { [weak self] side in self?.applyFocus(side) }
 
         operationExecutor = OperationExecutor(
@@ -96,6 +97,80 @@ final class PanelsCoordinator: NSObject {
             }
         }
         commandBar.updatePrompt(displayPath: posixPath(homePath))
+    }
+
+    /// F-18 wiring (T-16 / §6.1 v1): both panels drag their rows out through
+    /// the App-built pasteboard items and accept drops onto the whole panel.
+    private func wireDragEngines() {
+        wireDragEngine(for: leftPane)
+        wireDragEngine(for: rightPane)
+    }
+
+    private func wireDragEngine(for pane: PanelViewController) {
+        pane.fileListView.onPasteboardWriterForRow = { [weak self] row in
+            self?.dragItem(atRow: row, in: pane)
+        }
+        pane.fileListView.onDropReceived = { [weak self] urls, paths, isInternal, wantsCopy in
+            self?.acceptDrop(
+                urls: urls,
+                paths: paths,
+                isInternal: isInternal,
+                wantsCopy: wantsCopy,
+                into: pane
+            )
+        }
+    }
+
+    /// One dragged row → pasteboard item (LocalVFS rows only: the v1 scope
+    /// keeps network/archive sources inert).
+    private func dragItem(atRow row: Int, in pane: PanelViewController) -> NSPasteboardItem? {
+        let viewModel = pane.fileListView.viewModel
+        guard let item = viewModel.item(atVisibleIndex: row),
+              let local = viewModel.source as? LocalVFS
+        else { return nil }
+        return DragBridge.entry(fileURL: local.url(for: item.id), path: item.id)
+    }
+
+    /// The whole pane is the drop target (F-18 «домашняя панель — дефолт-цель»):
+    /// Finder files copy, another panel moves by default (⌥ copies).
+    private func acceptDrop(
+        urls: [URL],
+        paths: [VFSPath],
+        isInternal: Bool,
+        wantsCopy: Bool,
+        into pane: PanelViewController
+    ) {
+        guard pane.fileListView.viewModel.path != nil else { return }
+        let op: TransferOpKind = (isInternal && !wantsCopy) ? .move : .copy
+
+        let sources: [VFSPath]
+        if !paths.isEmpty {
+            sources = paths
+        } else {
+            // Finder brings raw local URLs; re-anchor to this app's single
+            // LocalVFS coordinate space (§5.1 displayURL keeps the intent).
+            sources = urls.map { localPath(from: $0) }
+        }
+        guard !sources.isEmpty else { return }
+        guard sources.allSatisfy({ $0.root == fileSystem.id }) else {
+            // v1 drag-out scope: non-local sources never accepted honestly.
+            commandBar.appendOutput(
+                String(localized: "drop.error.unsupportedSource"),
+                isError: true
+            )
+            return
+        }
+        Task { await executeTransfer(op, sources: sources, source: fileSystem, destinationPane: pane) }
+    }
+
+    /// Finder URL → the app's LocalVFS path space (root stays the running
+    /// instance so `LocalVFS.url(for:)` precondition holds).
+    private func localPath(from url: URL) -> VFSPath {
+        VFSPath(
+            root: fileSystem.id,
+            components: VFSPath.normalizedComponents(from: url),
+            displayURL: url
+        )
     }
 
     /// T-09: the bundled 07-map profiles; «tc» must decode first — it is the
@@ -646,54 +721,62 @@ final class PanelsCoordinator: NSObject {
     /// (auto-suffix) until the T-12 conflict dialog lands.
     private func beginTransferToOppositePane(_ op: TransferOpKind) {
         guard let destinationPane = oppositePane,
-              let target = destinationPane.fileListView.viewModel.path
+              let viewModel = activePane?.fileListView.viewModel
         else { return }
-        let viewModel = activePane?.fileListView.viewModel
         let sources = selectedSources
-        guard !sources.isEmpty, let viewModel else { return }
+        guard !sources.isEmpty else { return }
+        Task { await executeTransfer(op, sources: sources, source: viewModel.source, destinationPane: destinationPane) }
+    }
 
-        Task {
-            do {
-                let plan: TransferPlan
-                switch op {
-                case .move:
-                    plan = try await TransferPlanner.planMove(
-                        sources: sources,
-                        into: target,
-                        source: viewModel.source,
-                        destination: destinationPane.fileListView.viewModel.source
-                    )
-                default:
-                    plan = try await TransferPlanner.planCopy(
-                        sources: sources,
-                        into: target,
-                        source: viewModel.source,
-                        destination: destinationPane.fileListView.viewModel.source
-                    )
-                }
-                guard !plan.items.isEmpty else { return }
-                // T-12: planner-precomputed conflicts go through the dialog
-                // (preview + per-item/all policy); cancel aborts the operation.
-                var policy = ConflictPolicy(defaultResolution: .keepBoth)
-                if !plan.conflicts.isEmpty {
-                    let rows = await ConflictModels.preparePreviewRows(
-                        plan.conflicts,
-                        source: viewModel.source,
-                        destination: destinationPane.fileListView.viewModel.source
-                    )
-                    guard let chosen = ConflictDialogController.run(rows: rows) else { return }
-                    policy = chosen
-                }
-                let (id, stream) = await operationExecutor.enqueue(
-                    plan,
-                    policy: policy
+    /// Shared execution path for F5/F6 and the DnD drops (§6.1 v1, T-16):
+    /// plan → planner-precomputed conflicts dialog (preview + per-item/all
+    /// policy) → enqueue → progress window. Cancel aborts the operation.
+    private func executeTransfer(
+        _ op: TransferOpKind,
+        sources: [VFSPath],
+        source: any VFS,
+        destinationPane: PanelViewController
+    ) async {
+        guard let target = destinationPane.fileListView.viewModel.path else { return }
+        let destination = destinationPane.fileListView.viewModel.source
+        do {
+            let plan: TransferPlan
+            switch op {
+            case .move:
+                plan = try await TransferPlanner.planMove(
+                    sources: sources,
+                    into: target,
+                    source: source,
+                    destination: destination
                 )
-                showProgress(id: id, operation: stream, itemCount: plan.items.count)
-            } catch let error as MCError {
-                _ = error   // status-line surfacing arrives with T-12 UX pass
-            } catch {
-                _ = error
+            default:
+                plan = try await TransferPlanner.planCopy(
+                    sources: sources,
+                    into: target,
+                    source: source,
+                    destination: destination
+                )
             }
+            guard !plan.items.isEmpty else { return }
+            var policy = ConflictPolicy(defaultResolution: .keepBoth)
+            if !plan.conflicts.isEmpty {
+                let rows = await ConflictModels.preparePreviewRows(
+                    plan.conflicts,
+                    source: source,
+                    destination: destination
+                )
+                guard let chosen = ConflictDialogController.run(rows: rows) else { return }
+                policy = chosen
+            }
+            let (id, stream) = await operationExecutor.enqueue(
+                plan,
+                policy: policy
+            )
+            showProgress(id: id, operation: stream, itemCount: plan.items.count)
+        } catch let error as MCError {
+            _ = error   // status-line surfacing arrives with T-12 UX pass
+        } catch {
+            _ = error
         }
     }
 

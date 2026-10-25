@@ -139,8 +139,9 @@ zip (read+write), tar/gz/xz/bzip2 (read), 7z (read, v1.0 SHOULD). Открыти
 
 ### F-18. Drag & Drop обе стороны · MUST · M1
 Перетаскивание из Finder в панель (copy через TransferQueue), из панели в Finder; drag внутри панели между табами; nsPasteboard Business (file URLs).
-**Acceptance:** drag по сети/архиву работает symметрично (extract/copy); курсор-состояние адекватно (copy/move badges); drop в «домашнюю панель» — дефолт-цель.
+**Acceptance:** drag по сети/архиву работает симметрично (extract/copy); курсор-состояние адекватно (copy/move badges); drop в «домашнюю панель» — дефолт-цель.
 **Модули:** ListViewKit, FileOpsKit.
+*Уточнение T-16 (v1-скоуп):* Finder↔панель (LocalVFS: file URLs, copy) + panel↔panel (move по умолчанию, ⌥ = copy, самодроп — отказ; 06 §6.1 «Контракт v1 (T-16)»). Drag по сети/SFTP и «drop в архив — extract» — после ArchiveVFS/SftpVFS (M2); курсор-бейджи — по NSDragOperation.
 
 ### F-19. Info/свойства · MUST · M1
 Диалог по `⌃A`-эквивалент (remap): size, dates, права, owner, xattr, тэги, содержимое папки (рекурсивный размер — фоново).
