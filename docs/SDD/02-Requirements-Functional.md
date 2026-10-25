@@ -83,7 +83,7 @@ Undo только для «журналируемых» операций: rename
 **Модули:** ListViewKit (Lister window), VFSKit (stream).
 
 ### F-9. Quick Look интеграция · MUST · M1
-`Space` при выделенном файле (или `⌘Y`) открывает QLPreviewPanel — нативный превью.
+`⌘Y` открывает QLPreviewPanel — нативный превью (уточнение T-13: Space в 02 F-9 конфликтовал с F-3 «Space — выделить»; Space остаётся выделением, QL — по `⌘Y`, перебиндить Space сможет ремап).
 **Acceptance:** работает для любых QL-форматов; для файлов в архиве сохраняет в temp и preview; навигация ↑/↓ по списку внутри QL.
 **Модули:** ListViewKit.
 

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import AppKit
+import FileOpsKit
 import Foundation
 
 /// Application lifecycle (docs/SDD/11: MyCommanderApp.swift — entry, lifecycle).
@@ -37,5 +38,6 @@ final class MyCommanderApp: NSObject, NSApplicationDelegate {
     /// F-2: the tab stacks survive relaunch — persist on the way out.
     func applicationWillTerminate(_ notification: Notification) {
         coordinator?.saveSession()
+        PreviewMaterializer.purgeTempCopies()
     }
 }

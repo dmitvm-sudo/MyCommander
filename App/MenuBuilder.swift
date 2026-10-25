@@ -47,9 +47,12 @@ enum MenuBuilder {
             ItemSpec(titleKey: "menu.selectMasked", command: .selectMasked),
             ItemSpec(titleKey: "menu.deselectMasked", command: .deselectMasked),
         ]),
-        // Operations (T-11): F-5 file engine menu surface; items appear only
-        // when their handler is registered (MenuBuilder contract).
+        // Operations (T-11/T-13): F-5 file engine menu surface; items appear
+        // only when their handler is registered (MenuBuilder contract).
         SectionSpec(titleKey: "menu.operations", items: [
+            ItemSpec(titleKey: "menu.viewFile", command: .viewFile),
+            ItemSpec(titleKey: "menu.quickLook", command: .quickLook),
+            ItemSpec(titleKey: "menu.editFile", command: .editFile),
             ItemSpec(titleKey: "menu.copyFiles", command: .copyFiles),
             ItemSpec(titleKey: "menu.moveFiles", command: .moveRenameFiles),
             ItemSpec(titleKey: "menu.deleteFiles", command: .deleteFiles),
@@ -70,7 +73,11 @@ enum MenuBuilder {
             let item = NSMenuItem()
             let menu = NSMenu(title: String(localized: String.LocalizationValue(section.titleKey)))
             for spec in section.items where router.isRegistered(spec.command) {
+                // T-13: panel-list commands (F3–F8 in the 07 map) surface their
+                // profile binding in the menu too — the menu is the only
+                // keyboard path that fires them (MenuBuilder contract 06 §6.10).
                 let entry = keymap.entry(for: spec.command, in: .global)
+                    ?? keymap.entry(for: spec.command, in: .panelList)
                 let menuItem = NSMenuItem(
                     title: String(localized: String.LocalizationValue(spec.titleKey)),
                     action: #selector(CommandRouter.dispatchMenuItem(_:)),
@@ -100,11 +107,17 @@ enum MenuBuilder {
 
     // MARK: ANSI-US keycode → menu key equivalent
 
-    /// Menu display for the ANSI-US mapping of 07 §7.3; non-printable keys
-    /// (arrows beyond ↑, Tab, function keys) have no menu equivalent yet —
-    /// they still work through the keymap, they just display in Settings later.
+    /// Menu display for the ANSI-US mapping of 07 §7.3; F-keys render as «F3»
+    /// etc. through the NSFunctionKey scalars (T-13: panelList entries reached
+    /// the menu).
     static func keyEquivalent(for keyCode: UInt16) -> String? {
         switch keyCode {
+        case 99: return String(UnicodeScalar(NSF3FunctionKey)!)         // F3
+        case 118: return String(UnicodeScalar(NSF4FunctionKey)!)        // F4
+        case 96: return String(UnicodeScalar(NSF5FunctionKey)!)         // F5
+        case 97: return String(UnicodeScalar(NSF6FunctionKey)!)         // F6
+        case 98: return String(UnicodeScalar(NSF7FunctionKey)!)         // F7
+        case 100: return String(UnicodeScalar(NSF8FunctionKey)!)        // F8
         case 0: return "a"
         case 1: return "s"
         case 2: return "d"

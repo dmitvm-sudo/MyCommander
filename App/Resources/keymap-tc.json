@@ -43,6 +43,7 @@
     { "command": "selectAll", "context": "panelList", "combo": { "keyCode": 0, "modifiers": ["command"] } },
 
     { "command": "viewFile", "context": "panelList", "combo": { "keyCode": 99, "modifiers": ["function"] } },
+    { "command": "quickLook", "context": "global", "combo": { "keyCode": 16, "modifiers": ["command"] } },
     { "command": "editFile", "context": "panelList", "combo": { "keyCode": 118, "modifiers": ["function"] } },
     { "command": "copyFiles", "context": "panelList", "combo": { "keyCode": 96, "modifiers": ["function"] } },
     { "command": "moveRenameFiles", "context": "panelList", "combo": { "keyCode": 97, "modifiers": ["function"] } },

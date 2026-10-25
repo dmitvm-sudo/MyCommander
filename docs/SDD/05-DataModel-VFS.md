@@ -111,6 +111,11 @@ protocol ByteStreamWriter: Sendable {
     func write(_ data: Data) async throws
     func finish(committingTo finalTarget: VFSPath) async throws  // temp→rename
 }
+// Уточнение T-13: seek-способные адаптеры доказывают это этим протоколом,
+// ListerLoader открывает окно seek'ом; без него — добор пропуском чанков.
+protocol ByteStreamSeekable: ByteStream {
+    func seek(to offset: Int64) async throws
+}
 ```
 Используются: Lister (читает стрим-окно), FileOpsKit (копирует чанками 1–4 MB), QL-export из архивов.
 

@@ -69,6 +69,24 @@
 - Навигация: PageDown/Up, `⌃End` jump; «пустая» прокрутка за count (лениво окно); статус: позиц/кодировка; поиск внутри (F7): подсветка стрим-окон.
 - F4 «Edit во внешнем редакторе»: temp-коpия, файл мониторится (если задано) — «вернуть изменения» диалог при возврате.
 
+- **Контракт v1 (T-13):** слой просмотра строится на стрим-источниках FileOpsKit (ListViewKit не знает VFS-адаптеров —(layers 04)):
+```swift
+struct ListerByteSource: Sendable {              // окно-чтение F-8 (06 §6.7)
+    var totalSize: Int64
+    var read: @Sendable (_ offset: Int64, _ length: Int64) async throws
+        -> (offset: Int64, data: Data)           // seek по ByteStreamSeekable, иначе добор пропуском чанков
+}
+enum ListerLoader { static func open(path: VFSPath, in: any VFS) async -> ListerByteSource? }
+enum PreviewMaterializer {                        // URL для QL F-9 / F4-редактора
+    static func prepareFileURL(path: VFSPath, in: any VFS) async -> URL?  // LocalVFS → файл, иначе temp-копия (purge на terminate)
+    static func purgeTempCopies()
+}
+struct ListerTextPage { var text: String; var nextOffset: Int64 }  // граница символа, след страницы
+enum ListerCodec { decodeTextPage / hexPage / … }  // ListViewKit, чистая логика (детект UTF-8/16, hex 16 B/строку)
+```
+- Стрим-окно v1: текст 256 KB, hex 64 KB, image — целевой файл через `PreviewMaterializer` (8 MB из §6.7 — ориентир; меньше окно из-за файлов-без-newline: одна «строка» размером с окно тормозит NSTextView, семантика «окно+seek» сохранена). Авто-режим: image-расширения → image; NUL в первых 4 KB → hex; иначе text. Поиск внутри (F7)/«вернуть изменения» — следующие версии (не в acceptance F-8).
+- **Разрешение Space-конфликта F-3/F-9 (уточнение T-13):** Space в списке остаётся выделением (F-3, MUST, классика NC/TC); QL — `⌘Y` (02 F-9 «или ⌘Y», 07 «⌘Y / Space на невыделенном» — строка 07 приведена к «⌘Y»; назначить Space может пользователь ремапом, когда появится перебиндивание таблицы). В окне Lister Space/⇧Space — страница вперёд/назад (07, таблица «В просмотрщике»).
+
 ## 6.8 Terminal (TerminalKit)
 
 - SwiftTerm `LocalProcessTerminalView` — PTY child-process (~LOGIN_SHELL), env устанавливает `workdir = активная панель`.

@@ -13,6 +13,13 @@ public protocol ByteStream: Sendable {
     func readChunk(max: Int) async throws -> Data?
 }
 
+/// Уточнение T-13 (§5.5): adapters with random access prove it here — the
+/// Lister's window loader seeks rather than discarding chunks. Adapters without
+/// it keep window reads correct via skip-forward over `readChunk`.
+public protocol ByteStreamSeekable: ByteStream {
+    func seek(to offset: Int64) async throws
+}
+
 /// Sequential writer with staged-commit semantics: bytes stay buffered by the
 /// implementing adapter until `finish(committingTo:)` publishes them atomically
 /// (temp → rename, 06 §6.2). Writers must not be reused after finish.

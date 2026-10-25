@@ -279,6 +279,96 @@ final class PanelsCoordinator: NSObject {
         router.register(.deleteFiles) { [weak self] in
             self?.beginDeleteSelection()
         }
+
+        // View (F-8/F-9, T-13): Lister on the first selected file (F3), the
+        // external editor (F4) and the native Quick Look (⌘Y) over the
+        // effective selection.
+        router.register(.viewFile) { [weak self] in
+            self?.openLister()
+        }
+        router.register(.editFile) { [weak self] in
+            self?.editFirstInExternalEditor()
+        }
+        router.register(.quickLook) { [weak self] in
+            self?.quickLookSelection()
+        }
+    }
+
+    // MARK: View: Lister / editor / Quick Look (F-8, F-9 — T-13)
+
+    /// The Lister window is reusable: a second F3 replaces its content.
+    private var listerWindow: ListerWindowController?
+
+    /// Selected file items of the active pane (visible order; directories
+    /// never preview — F-8 lists files).
+    private var selectedFileItems: [VFSItem] {
+        guard let pane = activePane else { return [] }
+        let viewModel = pane.fileListView.viewModel
+        let selection = viewModel.effectiveSelection
+        guard !selection.isEmpty else { return [] }
+        var items: [VFSItem] = []
+        for index in 0 ..< viewModel.visibleCount {
+            guard let item = viewModel.item(atVisibleIndex: index),
+                  selection.contains(item.id)
+            else { continue }
+            if case .directory = item.kind { continue }
+            items.append(item)
+        }
+        return items
+    }
+
+    /// F3 (`.viewFile`): build the model from the streaming loader and show
+    /// (or replace the content in) the Lister window.
+    private func openLister() {
+        guard let pane = activePane, let item = selectedFileItems.first else { return }
+        let vfs = pane.fileListView.viewModel.source
+        let path = item.id
+        let name = item.name
+        Task { [weak self] in
+            guard let self, let source = await ListerLoader.open(path: path, in: vfs) else { return }
+            // The image-URL provider fires only when the sniffed mode is image.
+            let model = await ListerBootstrap.open(name: name, source: source) {
+                await PreviewMaterializer.prepareFileURL(path: path, in: vfs)
+            }
+            if let window = listerWindow {
+                window.reset(to: model)
+                window.activate()
+            } else {
+                let controller = ListerWindowController(model: model)
+                listerWindow = controller
+                controller.activate()
+            }
+        }
+    }
+
+    /// F4 (`.editFile`): first selected file in the external editor
+    /// (TextEdit by default); VFS objects go through a temp copy.
+    private func editFirstInExternalEditor() {
+        guard let pane = activePane, let item = selectedFileItems.first else { return }
+        let vfs = pane.fileListView.viewModel.source
+        let path = item.id
+        Task {
+            guard let url = await PreviewMaterializer.prepareFileURL(path: path, in: vfs) else { return }
+            NSWorkspace.shared.open(url)
+        }
+    }
+
+    /// ⌘Y (`.quickLook`): native preview of selected files; multiple items
+    /// enable the panel's own navigation (F-9 acceptance).
+    private func quickLookSelection() {
+        guard let pane = activePane else { return }
+        let items = selectedFileItems
+        guard !items.isEmpty else { return }
+        let vfs = pane.fileListView.viewModel.source
+        Task {
+            var requests: [(url: URL, displayName: String)] = []
+            for item in items.prefix(100) {
+                if let url = await PreviewMaterializer.prepareFileURL(path: item.id, in: vfs) {
+                    requests.append((url: url, displayName: item.name))
+                }
+            }
+            QuickLookPresenter.show(urls: requests)
+        }
     }
 
     private var oppositePane: PanelViewController? {

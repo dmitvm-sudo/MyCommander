@@ -376,7 +376,7 @@ final class InMemoryByteWriter: ByteStreamWriter, @unchecked Sendable {
 }
 
 /// §5.5 sequential reader over an immutable byte snapshot.
-final class InMemoryByteStream: ByteStream, @unchecked Sendable {
+final class InMemoryByteStream: ByteStreamSeekable, @unchecked Sendable {
     private let data: Data
     private let lock = NSLock()
     private var position = 0
@@ -386,6 +386,13 @@ final class InMemoryByteStream: ByteStream, @unchecked Sendable {
     }
 
     var length: Int64 { Int64(data.count) }
+
+    /// Уточнение T-13: window seeks for the Lister (§5.5 ByteStreamSeekable).
+    func seek(to offset: Int64) async throws {
+        withLock {
+            position = Int(min(max(offset, 0), Int64(data.count)))
+        }
+    }
 
     func readChunk(max: Int) async throws -> Data? {
         try withLock {

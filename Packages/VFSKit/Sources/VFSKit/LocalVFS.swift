@@ -471,7 +471,7 @@ public final class LocalVFS: VFS, @unchecked Sendable {
 }
 
 /// §5.5 sequential reader: one open FileHandle walked with bounded chunks.
-final class LocalByteStream: ByteStream, @unchecked Sendable {
+final class LocalByteStream: ByteStreamSeekable, @unchecked Sendable {
     private let lock = NSLock()
     private let handle: FileHandle
     private let storedLength: Int64
@@ -483,6 +483,22 @@ final class LocalByteStream: ByteStream, @unchecked Sendable {
     }
 
     var length: Int64 { storedLength }
+
+    /// Уточнение T-13: window seeks for the Lister (§5.5 ByteStreamSeekable).
+    func seek(to offset: Int64) async throws {
+        try withLock {
+            guard !closed else {
+                throw MCError.unexpected(underlying: NSError(
+                    domain: "MyCommander.LocalVFS",
+                    code: 3,
+                    userInfo: [NSLocalizedDescriptionKey: "stream already drained/closed"]
+                ))
+            }
+            let clamped = min(max(offset, 0), storedLength)
+            handle.seek(toFileOffset: UInt64(clamped))
+            closed = false
+        }
+    }
 
     func readChunk(max: Int) async throws -> Data? {
         try withLock {
