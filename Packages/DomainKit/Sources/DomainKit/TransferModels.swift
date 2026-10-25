@@ -40,11 +40,15 @@ public struct Conflict: Sendable {
     public var source: VFSPath
     public var target: VFSPath
     public var kind: Kind
+    /// Source metadata for the conflict dialog preview (docs/SDD/05 §5.6,
+    /// уточнение T-12); `nil` when unknown (e.g. sourceVanished).
+    public var sourceItem: VFSItem?
 
-    public init(source: VFSPath, target: VFSPath, kind: Kind) {
+    public init(source: VFSPath, target: VFSPath, kind: Kind, sourceItem: VFSItem? = nil) {
         self.source = source
         self.target = target
         self.kind = kind
+        self.sourceItem = sourceItem
     }
 }
 

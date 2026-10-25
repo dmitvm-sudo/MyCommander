@@ -119,7 +119,15 @@ public enum CopyTransaction {
     private static func materializeDirectory(_ transfer: TransferItem, destination: any VFS) async throws {
         guard let name = transfer.target.components.last else { return }
         let parent = transfer.target.parent
-        _ = try await destination.createDirectory(name, in: parent)
+        do {
+            _ = try await destination.createDirectory(name, in: parent)
+        } catch {
+            // A sibling item's ensureAncestors may have materialized this
+            // directory first — only a still-missing target is a real failure.
+            if (try? await destination.metadata(of: transfer.target)) == nil {
+                throw error
+            }
+        }
     }
 
     private static func copyFile(

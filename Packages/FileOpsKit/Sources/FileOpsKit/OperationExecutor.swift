@@ -92,6 +92,11 @@ public actor OperationExecutor: OperationExecutorProtocol {
         var itemBytes: [Int: Int64] = [:]
         var summary = Summary()
         var task: Task<Void, Never>?
+        /// Runtime re-check results gathered in ONE pass before any item
+        /// executes (T-12 fix): a sibling's `ensureAncestors` materializing a
+        /// parent directory mid-operation must not turn into a false «target
+        /// exists» for that directory's own item.
+        var runtimeConflicts: [VFSPath: Conflict] = [:]
 
         init(id: OperationID, continuation: AsyncStream<TransferEvent>.Continuation, totalBytes: Int64) {
             self.id = id
@@ -189,6 +194,19 @@ public actor OperationExecutor: OperationExecutorProtocol {
     /// flight; the FIFO order of *starts* is preserved (docs/SDD/06 §6.2).
     private func executeItems(_ plan: TransferPlan, policy: ConflictPolicy, run: Run) async {
         let runID = run.id
+        // Runtime re-check pass BEFORE any item mutates the destination
+        // (06 §6.2 «runtime re-check still happens» — targets may appear
+        // between planning and execution).
+        for item in plan.items {
+            if let existing = try? await destination.metadata(of: item.target) {
+                run.runtimeConflicts[item.target] = Conflict(
+                    source: item.source,
+                    target: item.target,
+                    kind: .targetExists(existing: existing),
+                    sourceItem: item.item
+                )
+            }
+        }
         var next = 0
         await withTaskGroup(of: Void.self) { group in
             func spawnNext() {
@@ -219,6 +237,18 @@ public actor OperationExecutor: OperationExecutorProtocol {
     /// (mkdir staging + per-child copy+delete, deepest-first source cleanup).
     private func executeMove(_ plan: TransferPlan, policy: ConflictPolicy, run: Run) async {
         let topLevel = Self.topLevelIndices(of: plan.items)
+        // Same single-pass runtime re-check as the copy path (T-12).
+        for index in topLevel {
+            let item = plan.items[index]
+            if let existing = try? await destination.metadata(of: item.target) {
+                run.runtimeConflicts[item.target] = Conflict(
+                    source: item.source,
+                    target: item.target,
+                    kind: .targetExists(existing: existing),
+                    sourceItem: item.item
+                )
+            }
+        }
         let runID = run.id
         await runPool(indices: topLevel) { [weak self] index in
             await self?.executeMoveItem(plan.items[index], index: index, plan: plan, policy: policy, runID: runID)
@@ -381,16 +411,11 @@ public actor OperationExecutor: OperationExecutorProtocol {
         guard let run = runs[runID] else { return nil }
         var transfer = planned
         var conflict = plan.conflicts.first { $0.target == planned.target }
-        if conflict == nil {
-            switch plan.op {
-            case .delete:
-                if (try? await source.metadata(of: planned.source)) == nil {
-                    conflict = Conflict(source: planned.source, target: planned.target, kind: .sourceVanished)
-                }
-            default:
-                if let existing = try? await destination.metadata(of: planned.target) {
-                    conflict = Conflict(source: planned.source, target: planned.target, kind: .targetExists(existing: existing))
-                }
+            ?? run.runtimeConflicts[planned.target]
+        if conflict == nil, plan.op == .delete {
+            // The source may have vanished between planning and execution.
+            if (try? await source.metadata(of: planned.source)) == nil {
+                conflict = Conflict(source: planned.source, target: planned.target, kind: .sourceVanished)
             }
         }
 

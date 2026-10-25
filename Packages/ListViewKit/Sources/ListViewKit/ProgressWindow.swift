@@ -15,8 +15,12 @@ public final class ProgressWindowController: NSWindowController {
     private let executor: any OperationExecutorProtocol
     private let operation: OperationID
     private let statusLine = NSTextField(labelWithString: "")
+    private let reportLine = NSTextField(labelWithString: "")
     private let pauseButton = NSButton()
     private var paused = false
+    /// F-5 «отчёт по завершении (ok/skip/fail/причины)» — accumulated from
+    /// the live event stream (T-12).
+    private var report = OperationReport()
 
     public init(
         id: OperationID,
@@ -39,6 +43,10 @@ public final class ProgressWindowController: NSWindowController {
         statusLine.lineBreakMode = .byTruncatingMiddle
         statusLine.stringValue = String(localized: "progress.starting \(itemCount)")
 
+        reportLine.lineBreakMode = .byWordWrapping
+        reportLine.maximumNumberOfLines = 6
+        reportLine.isHidden = true
+
         pauseButton.title = String(localized: "progress.pause")
         pauseButton.bezelStyle = .rounded
         pauseButton.target = self
@@ -49,7 +57,7 @@ public final class ProgressWindowController: NSWindowController {
 
         let buttons = NSStackView(views: [pauseButton, cancelButton])
         buttons.orientation = .horizontal
-        let layout = NSStackView(views: [statusLine, buttons])
+        let layout = NSStackView(views: [statusLine, reportLine, buttons])
         layout.orientation = .vertical
         layout.alignment = .leading
         layout.spacing = 10
@@ -68,12 +76,13 @@ public final class ProgressWindowController: NSWindowController {
         fatalError("ProgressWindowController is created programmatically only")
     }
 
-    /// Live event feed → status text. The task detaches: closing the window
-    /// only stops observing (F-5 background semantics).
+    /// Live event feed → status text + the finish report. The task detaches:
+    /// closing the window only stops observing (F-5 background semantics).
     private func consume(_ events: AsyncStream<TransferEvent>, itemCount: Int) {
         Task { [weak self] in
             for await event in events {
-                guard let self, let window else { break }
+                guard let self else { break }
+                report.record(event)
                 switch event.phase {
                 case .started:
                     break
@@ -94,15 +103,17 @@ public final class ProgressWindowController: NSWindowController {
                 case .resumed:
                     paused = false
                     pauseButton.title = String(localized: "progress.pause")
-                case .finished(let summary):
-                    statusLine.stringValue = String(
-                        localized: "progress.finished \(summary.succeededItems) \(summary.skippedItems) \(summary.failedItems)"
-                    )
+                case .finished:
+                    // F-5 «отчёт по завершении (ok/skip/fail/причины)»: the
+                    // window stays open until the user closes it — the report
+                    // is the record of the operation (T-12).
+                    statusLine.stringValue = report.summaryLine
+                    let reasons = report.reasonLines
+                    if !reasons.isEmpty {
+                        reportLine.stringValue = reasons.joined(separator: "\n")
+                        reportLine.isHidden = false
+                    }
                     pauseButton.isEnabled = false
-                    // Auto-close after a beat; the stub keeps it simple (T-12
-                    // adds the summary dialog and «остаётся открытым» policy).
-                    try? await Task.sleep(nanoseconds: 1_500_000_000)
-                    window.close()
                 }
                 _ = itemCount
             }

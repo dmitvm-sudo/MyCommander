@@ -166,7 +166,8 @@ public enum TransferPlanner {
             conflicts.append(Conflict(
                 source: sourcePath,
                 target: targetPath,
-                kind: .targetExists(existing: existing)
+                kind: .targetExists(existing: existing),
+                sourceItem: item
             ))
         }
 

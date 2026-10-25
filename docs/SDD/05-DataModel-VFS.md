@@ -126,6 +126,17 @@ struct TransferPlan: Sendable {
     var conflicts: [Conflict]              // предрасчёт на момент планирования
 }
 
+struct Conflict: Sendable {
+    enum Kind: Sendable {
+        case targetExists(existing: VFSItem?)   // цель занята → overwrite/skip/keepBoth
+        case insideSelfMove                     // перенос панели в собственную подпапку — запрет
+        case sourceVanished                     // источник исчез между планированием и исполнением
+    }
+    var source: VFSPath
+    var target: VFSPath
+    var sourceItem: VFSItem?   // метаданные источника для превью диалога (уточнение T-12)
+}
+
 enum ConflictResolution: Sendable {
     case overwrite, skip, keepBoth, cancel
     case applyToAll(ConflictResolution)    // «для всех»

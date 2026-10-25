@@ -330,9 +330,21 @@ final class PanelsCoordinator: NSObject {
                     )
                 }
                 guard !plan.items.isEmpty else { return }
+                // T-12: planner-precomputed conflicts go through the dialog
+                // (preview + per-item/all policy); cancel aborts the operation.
+                var policy = ConflictPolicy(defaultResolution: .keepBoth)
+                if !plan.conflicts.isEmpty {
+                    let rows = await ConflictModels.preparePreviewRows(
+                        plan.conflicts,
+                        source: viewModel.source,
+                        destination: destinationPane.fileListView.viewModel.source
+                    )
+                    guard let chosen = ConflictDialogController.run(rows: rows) else { return }
+                    policy = chosen
+                }
                 let (id, stream) = await operationExecutor.enqueue(
                     plan,
-                    policy: ConflictPolicy(defaultResolution: .keepBoth)
+                    policy: policy
                 )
                 showProgress(id: id, operation: stream, itemCount: plan.items.count)
             } catch let error as MCError {
