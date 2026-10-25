@@ -79,6 +79,12 @@ struct VFSCapabilities: Sendable {
 
 Реализации (VFSKit): `LocalVFS`, `ArchiveVFS`, `SftpVFS`; фейк `InMemoryVFS` — для тестов. Фабрика:
 
+*Уточнение T-23 (SftpVFS):* пути `VFSPath` несут компоненты АБСОЛЮТНОГО SFTP-пути
+(панель стартует с `realpath(".")` сервера — 06 §6.5); `capabilities` SftpVFS —
+canWatch=false, canRandomSeek=true, symlinkSupport=false, preservesDates=false —
+не-изменение §5.3-контракта; trash у SFTP нет — `delete(toTrash: true)` удаляет
+напрямую (подтверждение по 06 §6.2).
+
 ```swift
 protocol VFSRegistryProtocol: Sendable {
     func instance(for root: VFSInstanceID) -> (any VFS)?   // уточнение T-21: nil = не зарегистрирован (без precondition)

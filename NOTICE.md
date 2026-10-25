@@ -14,14 +14,21 @@
 | weichsel/ZIPFoundation | MIT | ZIP read (T-21), ZIP write (T-22) (F-12) | M2 (T-21) |
 | tsolomko/SWCompression | MIT | tar/gz/xz/bz2 read (F-12; 7z-read — v1.0 SHOULD) | M2 (T-21) |
 | tsolomko/BitByteData | MIT | транзитивная зависимость SWCompression (bit readers) | M2 (T-21) |
+| orlandos-nl/Citadel | MIT | SSH/SFTP-клиент + in-process SFTP-сервер тест-стенда (F-13) | M2 (T-23) |
+| Wellz26/swift-nio-ssh | Apache-2.0 | SSH-транспорт; прямая пин-зависимость Citadel 0.12.1 (замороженный apple/swift-nio-ssh подменён форком апстримом — supply-chain риск отмечен, версия пинится Citadel-ом) | M2 (T-23) |
+| apple/swift-nio | Apache-2.0 | NIO-транспорт Citadel | M2 (T-23) |
+| apple/swift-log | Apache-2.0 | Logging Citadel | M2 (T-23) |
+| attaswift/BigInt | MIT | BigInt Citadel | M2 (T-23) |
+| apple/swift-crypto | Apache-2.0* | Crypto Citadel (*внутри — BoringSSL, dual OpenSSL/Apache-2.0) | M2 (T-23) |
+| mtynior/ColorizeSwift | MIT | объявленная dep Citadel (подключает executable-пример; попадает в resolved) | M2 (T-23) |
+| apple/swift-asn1 | Apache-2.0 | транзитивная dep swift-crypto | M2 (T-23) |
+| apple/swift-atomics | Apache-2.0 | транзитивная dep swift-nio | M2 (T-23) |
+| apple/swift-collections | Apache-2.0 | транзитивная dep swift-nio | M2 (T-23) |
+| apple/swift-system | Apache-2.0 | транзитивная dep swift-nio | M2 (T-23) |
 
 ## Запланировано (лицензию подтвердить при добавлении)
 | Пакет | Лицензия | Назначение | Появится в |
 |---|---|---|---|
-| weichsel/ZIPFoundation | MIT | ZIP read/write (F-12) | M2 (T-21) |
-| tsolomko/SWCompression | MIT | tar/gz/xz/bz2, 7z read (F-12) | M2 (T-21) |
-| apple/swift-nio-ssh | Apache-2.0 | SSH-транспорт | M2 (T-23) |
-| orlandos-nl/Citadel | MIT | SFTP-клиент (F-13) | M2 (T-23) |
 | migueldeicaza/SwiftTerm | MIT | встроенный terminal (F-17) | M3 (T-31) |
 | Sparkle | MIT | автообновления | v1.0 (T-37) |
 

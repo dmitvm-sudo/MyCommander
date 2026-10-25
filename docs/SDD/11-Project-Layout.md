@@ -53,6 +53,7 @@ MyCommander/
 │   ├── Archive/SevenZipReader.swift # SWCompression (v1.0 SHOULD)
 │   ├── Sftp/SftpVFS.swift           # Citadel-адаптер
 │   ├── Sftp/SftpConnection.swift    # lifetime/KA/backoff/hostKey pinning
+│   ├── Sftp/SftpVFS.swift           # T-23: SFTP-адаптер (5.3-операции, seekable, staging)
 │   ├── SearchResultVFS.swift        # виртуальная папка результатов поиска
 │   ├── VFSRegistry.swift            # инстансы, mountedVolumes()
 │   └── InMemoryVFS.swift            # тестовый fake + errno-инжекция

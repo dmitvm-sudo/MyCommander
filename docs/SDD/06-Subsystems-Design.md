@@ -99,6 +99,42 @@ Path-traversal блок: имена связываются архивной но
 - Хост-ключ: первый accept с fingerprint-диалогом; pinning в `ConnectionRecord`; изменение — красный экран-подтверждение (mitm-защита).
 - Переносы файлов: прогресс per-file (offset-based); пауза может стоить буферизации (документированный предел).
 
+*Уточнение T-23 (ядро; robustness KA/backoff/таймауты — T-25):* пакет Citadel 0.12.1
+(MIT; note: Citadel пинит форк `Wellz26/swift-nio-ssh` версий 0.3.x вместо замороженного
+`apple/swift-nio-ssh` — Apache-2.0, риск зафиксирован в NOTICE). **SftpConnection**
+(`VFSKit/Sftp/SftpConnection.swift`): `SftpConnectionConfig` (host/port/username/`auth`:
+`.password` | `.ed25519(OpenSSH-key string)`; hostKeyValidator как policy-параметр —
+pinning/fingerprint-UI приходит с T-24/ConnectionStore); lifetime: `SSHClient.connect`
+(reconnectMode `.never` последовательность T-25) → `openSFTP()` единожды — ОДИН
+`SFTPClient` на соединение (Sendable, request/response корреляция по id). **errno-маппинг
+на границе адаптера (05 §5.8)**: SFTP `noSuchFile` → `vfsNotFound`; `permissionDenied` →
+`vfsAccessDenied`; `eof` на read → пустой чанк (нормальный конец файла); `failure` /
+`badMessage` / `unknown(code)` → `.network(id, code: debugDescription)`;
+`connectionLost`/`missingResponse`/`connectionClosed` → `.interrupted`.
+**Пути**: components `VFSPath` = сегменты абсолютного SFTP-пути; базовая точка панели —
+`realpath(".")` сервера (кэш `homePath`), traversal-guard — только normalize-пути
+(`VFSPath` уже выкидывает `..`). **Чтение**: `SftpByteStream` — один `SFTPFile` (flags
+`.read`) + локальный cursor; `readChunk(max:)` = `SFTPFile.read(from:length:)`
+(верх чанка 32 KB — сервер-лимит пакета, swift-nio-ssh #99); `length` — из fstat-размера;
+`seek(to:)` через offset-read → `ByteStreamSeekable` (canRandomSeek = true).
+**Запись (staging, 06 §6.2)**: `SftpByteStreamWriter` — open temp `.<name>.mc-partial` в
+родителе цели (`.write/.create/.truncate`), write чанками (`SFTPFile.write(at:)`),
+`finish(committingTo:)` → close → (replace && final есть → pre-remove final — SFTP_RENAME
+v3 не гарантирует overwrite) → `rename` temp → final.
+**Delete**: деревьев разбираются bottom-up рекурсией listDirectory (SFTP не имеет rm -r);
+trash на сервере не существует → `toTrash: true` = прямое удаление (06 §6.2: подтверждение
+в UI). **Каталоги и размеры**: dirSize — рекурсией listDirectory; **copyContents** — default
+extension §5.3 (server-side copy — v1.x), **setAttributes** — permissions/mtime через
+`SFTPFileAttributes`. **capabilities**: canWrite/canDelete/canRename = true; canWatch =
+false (панель обновляет prefetch-ом при возврате фокуса — 05 §5.4); canRandomSeek = true;
+preservesDates = false (v1 не гоняет mtime при transfer — T-25 опция); symlinkSupport =
+false (symlink виден как `kind = .symlink`, но не materialize).
+**Live-тесты**: in-process Citadel `SSHServer.host` (полный SSH/SFTP handshake по
+loopback TCP, host keys генерятся в тесте) + `SFTPDelegate` поверх FileManager
+temp-каталога = «живой SFTP-тест-сервер» без внешних зависимостей CI (серверный стек
+Citadel так и работает в своих собственных тестах); отдельный внешний сервер
+(env SSH_HOST…) не требуется — тест-стенд поднимается в самом тест-процессе.
+
 ## 6.6 EnginesKit
 
 - **FilterEngine** (quick filter F-10): подстрока/fuzzy (скорл-Damerau-подобная, но простая prefix-matching по умолчанию substring), обработка ≤ 50 мс на 50k (по Int-index, без создания строк повторно; мемоизация префикса ввода).
