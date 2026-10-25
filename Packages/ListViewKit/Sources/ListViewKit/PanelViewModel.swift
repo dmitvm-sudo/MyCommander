@@ -359,9 +359,11 @@ public final class PanelViewModel {
         for (offset, item) in rawItems.enumerated() where offsetByID[item.id] == nil {
             offsetByID[item.id] = offset
         }
+        // N-2 (T-19): index-sort — no 100k-item transient copy sits in the
+        // malloc small zones after the recompute (footprint hardening test).
         let sortedIndices = rawItems
-            .sortedItems(by: [sort])
-            .compactMap { offsetByID[$0.id] }
+            .sortedIndices(by: [sort])
+            .compactMap { offsetByID[rawItems[$0].id] }
         if filterQuery.isEmpty {
             visibleIndices = sortedIndices
         } else {

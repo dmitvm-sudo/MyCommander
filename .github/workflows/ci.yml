@@ -18,6 +18,14 @@ jobs:
       - name: License check (N-10)
         run: ./Tools/license-check.sh
 
+  perf:
+    name: Perf budgets (Release, 8.5)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test (Release, fail-build-on-regression)
+        run: swift test -c release --enable-swift-testing
+
   lint:
     name: Lint (SwiftLint strict + SwiftFormat)
     runs-on: macos-latest

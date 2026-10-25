@@ -78,17 +78,30 @@ public extension Array where Element == VFSItem {
     ///   regardless of key/order.
     /// - Ties keep input order (Swift's `sorted` is stable).
     func sortedItems(by criteria: [SortCriteria]) -> [Element] {
-        sorted { a, b in
-            if a.isDirectory != b.isDirectory, criteria.contains(where: { $0.dirsFirst }) {
-                return a.isDirectory
-            }
-            for criterion in criteria {
-                let result = itemCompare(a, b, by: criterion.key) * orderSign(of: criterion.order)
-                if result != 0 { return result < 0 }
-            }
-            return false
-        }
+        sorted { itemLess($0, $1, by: criteria) }
     }
+
+    /// Same semantics as `sortedItems(by:)` over the INDICES of the listing —
+    /// without copying the items themselves (N-2 hardening T-19: a 100k-panel
+    /// sort carries a 0.8 MB [Int] transient, not a 100k-item snapshot copy).
+    /// Stable, so it reproduces `sortedItems` row-for-row.
+    func sortedIndices(by criteria: [SortCriteria]) -> [Int] {
+        var indices = Array<Int>(self.indices)
+        indices.sort { itemLess(self[$0], self[$1], by: criteria) }
+        return indices
+    }
+}
+
+/// Shared stable comparator (dirsFirst first, then per-criterion order).
+private func itemLess(_ a: VFSItem, _ b: VFSItem, by criteria: [SortCriteria]) -> Bool {
+    if a.isDirectory != b.isDirectory, criteria.contains(where: { $0.dirsFirst }) {
+        return a.isDirectory
+    }
+    for criterion in criteria {
+        let result = itemCompare(a, b, by: criterion.key) * orderSign(of: criterion.order)
+        if result != 0 { return result < 0 }
+    }
+    return false
 }
 
 extension VFSItem {

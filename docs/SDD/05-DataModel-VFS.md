@@ -217,3 +217,6 @@ struct ViewPreset: Codable { var columns: [ColumnID]; var widths: [Int: CGFloat]
 enum ColumnID: String, Codable, CaseIterable { // name, size, dateModified, dateCreated, kind, tags, permissions, owner, gitStatus(provider v1.x), custom(string from provider)
 }
 ```
+*Уточнение T-19 (память, N-2):* семантика сортировки — стабильный порядок с dirsFirst;
+кроме `sortedItems(by:)` (копия items) есть `sortedIndices(by:) -> [Int]` (та же
+семантика без копии списка — панель 100k сортируется индексами, transient ≈ 0.8 MB).

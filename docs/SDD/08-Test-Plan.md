@@ -61,3 +61,5 @@
 | queue: copy throughput | ≥ 90 % `cp -R` | 2 GB, same image |
 | lister open | ≤ 200 мс до первого листания | 4 GB sparse |
 | launch to first panel | ≤ 1.5 с | временный профайл |
+
+*Уточнение T-19 (CI-гейт v1):* в CI отдельная job прогоняет весь suite в Release (fail-on-regression, N-1); Debug-прогон уже несёт budget-ассерты. Автоматизировано (где живёт): catalog open 10k — LocalVFS leg (VFSKit, in-test ≤ 1.2 с = CI-запас ×4 от честного 300 мс регистра; дифф-leg покрыт T-06 `DiffUpdateTests`); quick filter 50k ≤ 50 мс (F-10, T-07); дифф 100 changed на 50k ≤ 100 мс (T-06); scroll-sweep 5k×3 кол + структура (T-05); lister open 4 GB sparse + первое окно 8 MB (FileOpsKit, in-test ≤ 1.0 с = CI-запас ×5 от 200 мс). Memory-профили N-2: footprint panel-данных 100k строк ≤ +100 MB (ListViewKit) и Lister-окна по 4 GB sparse → delta ≤ 64 MB (стрим без буферизации, FileOpsKit). Не автоматизируем в CI: copy throughput 2 GB ≥ 90 % `cp -R` и launch to first panel ≤ 1.5 с — фиксчуры рантайм-тяжёлые/аппаратно-зависимые, их регистр = smoke 8.4 п.1/3 вручную.
