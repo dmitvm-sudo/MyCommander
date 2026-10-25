@@ -442,6 +442,10 @@ final class PanelsCoordinator: NSObject {
         router.register(.deleteFiles) { [weak self] in
             self?.beginDeleteSelection()
         }
+        // F-12 (T-22): pack the selection into ONE zip in the opposite panel.
+        router.register(.packFiles) { [weak self] in
+            self?.beginPackSelection()
+        }
 
         // View (F-8/F-9, T-13): Lister on the first selected file (F3), the
         // external editor (F4) and the native Quick Look (⌘Y) over the
@@ -912,6 +916,84 @@ final class PanelsCoordinator: NSObject {
                 plan,
                 policy: policy
             )
+            showProgress(id: id, operation: stream, itemCount: plan.items.count)
+        } catch let error as MCError {
+            _ = error   // status-line surfacing arrives with T-12 UX pass
+        } catch {
+            _ = error
+        }
+    }
+
+    /// F-12 (T-22): pack the effective selection of the ACTIVE pane into ONE
+    /// zip (Pack dialog: name + compression method). The zip lands in the
+    /// opposite pane's current directory (v1 destination is fixed — 02 F-12);
+    /// a queued `.packZip` plan runs through the same progress window.
+    private func beginPackSelection() {
+        guard let destinationPane = oppositePane, let sourcePane = activePane else { return }
+        let viewModel = sourcePane.fileListView.viewModel
+        let sources = selectedSources
+        guard !sources.isEmpty else { return }
+        guard let target = destinationPane.fileListView.viewModel.path else { return }
+        let destination = destinationPane.fileListView.viewModel.source
+        // v1 honest limit (06 §6.2 T-22): the zip is published locally.
+        guard destination is LocalVFS else {
+            let alert = NSAlert()
+            alert.messageText = String(localized: "pack.onlyLocalDestination")
+            alert.alertStyle = .warning
+            _ = alert.runModal()
+            return
+        }
+        let defaultName: String
+        if sources.count == 1, let single = sources.first?.components.last, !single.isEmpty {
+            defaultName = single + ".zip"
+        } else {
+            defaultName = String(localized: "pack.defaultName")
+        }
+        guard let choice = PackDialog.run(defaultName: defaultName) else { return }
+        let zipName = choice.name.hasSuffix(".zip") ? choice.name : choice.name + ".zip"
+        let compression = choice.compression
+        let source = viewModel.source
+        Task { await executePack(
+            sources: sources,
+            from: source,
+            into: target,
+            zipName: zipName,
+            compression: compression,
+            destination: destination
+        ) }
+    }
+
+    /// Shared pack execution: plan → conflict dialog (the shared zip target)
+    /// → enqueue → progress window (06 §6.2 T-22).
+    private func executePack(
+        sources: [VFSPath],
+        from source: any VFS,
+        into target: VFSPath,
+        zipName: String,
+        compression: ZipPackCompression,
+        destination: any VFS
+    ) async {
+        do {
+            let plan = try await ZipPackPlanner.planPack(
+                sources: sources,
+                into: target,
+                zipName: zipName,
+                source: source,
+                destination: destination,
+                compression: compression
+            )
+            guard !plan.items.isEmpty else { return }
+            var policy = ConflictPolicy(defaultResolution: .keepBoth)
+            if !plan.conflicts.isEmpty {
+                let rows = await ConflictModels.preparePreviewRows(
+                    plan.conflicts,
+                    source: source,
+                    destination: destination
+                )
+                guard let chosen = ConflictDialogController.run(rows: rows) else { return }
+                policy = chosen
+            }
+            let (id, stream) = await operationExecutor.enqueue(plan, policy: policy)
             showProgress(id: id, operation: stream, itemCount: plan.items.count)
         } catch let error as MCError {
             _ = error   // status-line surfacing arrives with T-12 UX pass

@@ -116,6 +116,11 @@ zip (read+write), tar/gz/xz/bzip2 (read), 7z (read, v1.0 SHOULD). Открыти
 - Архивы > 4 GB; прогресс на элементах; русские/unicode-имена корректны (CP866 fallback).
 - Pack: контекстное «Pack…» → формат опции, уровень, имя; фоновая упаковка в TransferQueue.
 **Модули:** VFSKit (ArchiveVFS), FileOpsKit.
+*Уточнение T-22 (v1-скоуп):* «Pack…» = zip-only контейнер (опция «метод сжатия»
+mutually deflate/store; уровень сжатия ZIPFoundation не выставляет — честно в 06 §6.2);
+«извлечь всё» в v1 = обычный F-5 copy-план из архив-панели в противоположную (planCopy
+уже раскрывает дерево и стримит записи через `ArchiveVFS.openRead` — исполняется
+очередью T-10, отдельный extract-all-контекст НЕ вводится).
 
 ### F-13. SFTP как папка + Connection Manager · MUST · M2
 Создание/редактирование подключений (host, порт, учётные данные в Keychain, поддержка ssh-ключей и known-hosts); SFTP-панель ведёт себя как локальная (list/stat/read/write/rename/mkdir/rm).

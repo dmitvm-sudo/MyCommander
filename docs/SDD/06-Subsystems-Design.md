@@ -37,6 +37,24 @@
 
 **Journal:** каждое совершившееся изменение (`renameBackPath`, `createdPath`, `trashMoveRecord`) пишется в `JournalStorage` (кольцевой буфер, 20 записей). Undo — реверс-план исполняется тем же `OperationExecutor` (конфликты задают те же диалоги). *Уточнение T-20 (v1):* план строит `UndoPlanner` (FileOpsKit) по `JournalRecord.popLast`; команда `.undo` (⌘Z, global, меню «menu.undo» в Operations); mkdir-записи append-ит App при успехе `createDirectory`.
 
+**Pack-flow (zip) — уточнение T-22 (F-12):** оболочка `FileOpsKit/ZipPack.swift` над
+`ZIPFoundation`: `ZipPackSpec` — параметры в `TransferPlan.zipPack` (DomainKit:
+`ZipPackCompression.store/.deflate`; «уровень» сжатия ZIPFoundation не выставляет —
+диалог Pack честно показывает именно «метод»), `ZipPackPlanner.planPack(sources:into:) →
+TransferPlan(op: .packZip, items: N источников, target = destination/zipName для всех,
+conflicts: targetExists на zip)`. Executor-ветка `.packZip`: destination обязан быть
+`LocalVFS` (v1: зип пишется локально; иначе `.vfsUnsupported`); публикация — staging
+`.<name>.mc-partial` в ЦЕЛЕВОМ каталоге → rename (единый протокол 06 §6.2,
+idem CopyTransaction); источники — LocalVFS → `addEntry(fileURL:)` напрямую,
+ArchiveVFS/др. → материалазизация через `openRead` во временные файлы →
+`addEntry(fileURL:)`, temp удаляется; имена entry — только из `VFSItem.name` (не из
+имён temp); пауза/отмена — `OperationGate` на границах entry. Прогресс — по байтам
+источников на границах entry (ZIPFoundation update total-only при записи — per-chunk
+невозможно; честный фикс v1, зафиксировано в 05 §5.6 уточнение). JournalRecord
+`.packZip` → reversal `deleteCreated(zipPath)`. Download-сноска: «extract-все» в v1 —
+это обычный copy-план F-5 из ArchiveVFS в LocalVFS (исполняется очередью T-10 через
+`openRead`; сноска в 02 F-12).
+
 **Персистентность очереди:** в рамках сессии (crash → восстановить список незавершённых вопросом «добить?»).
 
 ## 6.3 Watcher (LocalVFS)

@@ -125,6 +125,18 @@ protocol ByteStreamSeekable: ByteStream {
 enum TransferOpKind: Sendable { case copy, move, delete, link }
 struct TransferItem: Sendable { var source: VFSPath; var target: VFSPath; var item: VFSItem }
 
+*Уточнение T-22 (F-12 pack):* в `TransferOpKind` добавлен `case packZip` (исполняемый
+case с журналом — наряду с T-20 `mkdir`-журналом). Семантика: один план `.packZip` —
+ОДИН zip-артефакт: `items[i].source` — топовые источники выделения (i-й элемент,
+дерево раскрывает ZipPackTask на исполнении), `items[i].target` у всех — ОДИН и тот же
+конечный путь зипа (destination = LocalVFS-only в v1, 06 §6.2 уточнение T-22); конфликты
+— обычный `targetExists` через planner на целевой zip (один на план). Executor-ветка
+`.packZip`: пер-элементный воркер-пул НЕ применяется (артефакт один, конфликт
+разрешается по items[0].target); пауза/отмена — тот же `OperationGate` на границах
+entry; отмена внутри entry — не поддерживается ZIPFoundation (addEntry не проверяет
+cancel — v1 честно: реакция на границе entry, staged temp удаляется); JournalRecord
+`op: .packZip` c reversal `deleteCreated(zipPath)`.
+
 struct TransferPlan: Sendable {
     var op: TransferOpKind
     var items: [TransferItem]

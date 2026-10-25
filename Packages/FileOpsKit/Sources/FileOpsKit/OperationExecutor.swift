@@ -2,6 +2,7 @@
 
 import DomainKit
 import Foundation
+import ZIPFoundation
 
 // Contract: docs/SDD/06 §6.2 layer 3 + docs/SDD/05 §5.6 OperationExecutorProtocol:
 // worker pool (≤ 4 concurrent item transactions), per-item transactions, pause
@@ -188,6 +189,10 @@ public actor OperationExecutor: OperationExecutorProtocol {
             for index in plan.items.indices {
                 await failItem(run, index: index, error: .vfsUnsupported(plan.items[index].source.root, "mkdir operations are not executed by the transfer engine"))
             }
+        case .packZip:
+            // F-12 pack (T-22/06 §6.2): ONE zip artifact per plan; no item
+            // pool — the conflict resolves on items[0].target.
+            await executePackZip(plan, policy: policy, run: run)
         }
 
         run.summary.canceled = Task.isCancelled || run.summary.canceled
@@ -317,6 +322,52 @@ public actor OperationExecutor: OperationExecutorProtocol {
                 ))
             }
             recordBytes(run.id, index: index, bytes: movedBytes)
+            emit(run, .itemDone)
+        } catch is CancellationError {
+            run.summary.startedItems += 1
+            run.summary.failedItems += 1
+            run.summary.canceled = true
+            emit(run, .itemFailed(.canceled))
+        } catch let error as MCError {
+            await failItem(run, index: index, error: error)
+        } catch {
+            await failItem(run, index: index, error: .unexpected(underlying: error))
+        }
+    }
+
+    // MARK: pack zip (T-22)
+
+    /// F-12 pack: one zip artifact. The conflict is resolved by the shared
+    /// `resolveConflicts` (overwrite deletes the target zip once); the rest
+    /// of the plan items are pure sources for `ZipPackTask.pack`. Journal
+    /// reversal: `deleteCreated(zipPath)`.
+    private func executePackZip(_ plan: TransferPlan, policy: ConflictPolicy, run: Run) async {
+        guard let first = plan.items.first else { return }
+        let index = plan.items.startIndex
+        let runID = run.id
+        guard let transfer = await resolveConflicts(first, index: index, plan: plan, policy: policy, runID: runID) else { return }
+        let method: CompressionMethod = plan.zipPack?.compression == .store ? .none : .deflate
+
+        do {
+            let bytes = try await ZipPackTask.pack(
+                target: transfer.target,
+                sources: plan.items,
+                source: source,
+                destination: destination,
+                compressionMethod: method,
+                gate: run.gate,
+                progress: { [weak self] fraction, consumedBytes in
+                    await self?.recordProgress(runID, index: index, fraction: fraction, bytes: consumedBytes)
+                }
+            )
+            run.summary.startedItems += 1
+            run.summary.succeededItems += 1
+            recordBytes(run.id, index: index, bytes: bytes)
+            journal.append(JournalRecord(
+                timestamp: Date(),
+                op: plan.op,
+                reversals: [.deleteCreated(path: transfer.target)]
+            ))
             emit(run, .itemDone)
         } catch is CancellationError {
             run.summary.startedItems += 1

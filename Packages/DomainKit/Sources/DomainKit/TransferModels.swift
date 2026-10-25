@@ -15,6 +15,11 @@ public enum TransferOpKind: Codable, Sendable, Hashable {
     /// `VFS.createDirectory` and needs an undo record; the executor refuses
     /// a planned `.mkdir` like `.link` (mkdir does not execute as a transfer).
     case mkdir
+    /// F-12 pack (T-22/06 §6.2): pack the selection into ONE zip archive at
+    /// `items[0].target` (destination = LocalVFS in v1). Planned by
+    /// `ZipPackPlanner`, executed by the executor's `.packZip` branch with the
+    /// shared OperationGate; journaled for undo (reversal `deleteCreated`).
+    case packZip
 }
 
 /// One planned unit: the resolved source object (tree already expanded by Planner)
@@ -93,11 +98,30 @@ public struct TransferPlan: Sendable {
     public var items: [TransferItem]
     /// Precomputed at planning time (06 §6.2); runtime re-check still happens.
     public var conflicts: [Conflict]
+    /// F-12 pack (T-22): parameters of a `.packZip` plan — one zip artifact,
+    /// one conflict; `nil` for copy/move/delete/link/mkdir plans.
+    public var zipPack: ZipPackSpec?
 
-    public init(op: TransferOpKind, items: [TransferItem], conflicts: [Conflict] = []) {
+    public init(op: TransferOpKind, items: [TransferItem], conflicts: [Conflict] = [], zipPack: ZipPackSpec? = nil) {
         self.op = op
         self.items = items
         self.conflicts = conflicts
+        self.zipPack = zipPack
+    }
+}
+
+/// F-12 pack parameters (05 §5.6 уточнение T-22). Honest v1: ZIPFoundation
+/// exposes only store/deflate — no compression level dial.
+public enum ZipPackCompression: String, Codable, Sendable, Hashable {
+    case store
+    case deflate
+}
+
+public struct ZipPackSpec: Sendable, Codable, Hashable {
+    public var compression: ZipPackCompression
+
+    public init(compression: ZipPackCompression = .deflate) {
+        self.compression = compression
     }
 }
 

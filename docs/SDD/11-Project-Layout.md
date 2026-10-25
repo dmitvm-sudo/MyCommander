@@ -65,6 +65,8 @@ MyCommander/
 │   ├── Transactions/MoveTransaction.swift   # rename(2) vs cross-volume
 │   ├── Transactions/DeleteTransaction.swift # tree-walk, trash
 │   ├── JournalStorage.swift         # кольцевой буфер undo-записей
+│   ├── UndoPlanner.swift            # T-20: реверс-план по JournalRecord
+│   ├── ZipPack.swift                 # T-22: pack-flow zip (ZipPackSpec/Planner/Task)
 │   └── TransferEvents.swift         # public AsyncStream-канал прогресса
 │
 ├── Packages/EnginesKit/
