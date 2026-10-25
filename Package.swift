@@ -42,7 +42,7 @@ let moduleDependencyNames: [String: [String]] = [
 /// реальный листинг через LocalVFS/InMemoryVFS без подключения VFSKit к библиотеке).
 let testDependencyNames: [String: [String]] = [
     "ListViewKit": ["VFSKit"],
-    "VFSKit": ["NIOEmbedded"],   // T-24: EmbeddedEventLoop для promise-тестов политики
+    "VFSKit": ["NIOEmbedded", "NIOPosix"],   // T-24: EmbeddedEventLoop (promise-тесты); T-25: NIOPosix (cable-pull proxy)
 ]   // NIOSSH VFSKitTests получает через moduleDependencyNames["VFSKit"] (одно ребро — иначе SPM duplicate-product warning)
 
 /// T-23: byName-зависимость «NIOConcurrencyHelpers» (продукт транзитивного до
@@ -57,6 +57,9 @@ func dependency(named name: String) -> Target.Dependency {
     }
     if name == "NIOEmbedded" {
         return .product(name: "NIOEmbedded", package: "swift-nio")
+    }
+    if name == "NIOPosix" {
+        return .product(name: "NIOPosix", package: "swift-nio")
     }
     return Target.Dependency.byName(name: name)
 }

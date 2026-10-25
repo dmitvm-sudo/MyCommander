@@ -250,21 +250,3 @@ struct SftpVFSTests {
 private func sfZeros(_ count: Int) -> Foundation.Data {
     Data(repeating: 7, count: count)
 }
-
-/// Lock-protected counter for the @Sendable progress sink (`sf` name-space).
-private final class SFCounter: @unchecked Sendable {
-    private let lock = NSLock()
-    private var value_ = 0
-
-    func increment() {
-        lock.lock()
-        value_ += 1
-        lock.unlock()
-    }
-
-    var value: Int {
-        lock.lock()
-        defer { lock.unlock() }
-        return value_
-    }
-}

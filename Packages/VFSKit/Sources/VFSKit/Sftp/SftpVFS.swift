@@ -116,7 +116,7 @@ public final class SftpVFS: VFS, @unchecked Sendable {
     public func listDirectory(at path: VFSPath) async throws -> [VFSItem] {
         try checkOwn(path)
         do {
-            let names = try await connection.client.listDirectory(atPath: absolute(path))
+            let names = try await connection.currentClient().listDirectory(atPath: absolute(path))
             let entries = names.flatMap { $0.components }
             return entries.compactMap { component in
                 guard component.filename != ".", component.filename != ".." else { return nil }
@@ -135,7 +135,7 @@ public final class SftpVFS: VFS, @unchecked Sendable {
         try checkOwn(path)
         let name = path.components.last ?? "/"
         do {
-            let attributes = try await connection.client.getAttributes(at: absolute(path))
+            let attributes = try await connection.currentClient().getAttributes(at: absolute(path))
             return makeItem(path: path, name: name, attributes: attributes)
         } catch {
             throw map(error, path)
@@ -150,6 +150,7 @@ public final class SftpVFS: VFS, @unchecked Sendable {
     }
 
     private func walkSize(_ path: VFSPath, progress: ProgressSink?) async throws -> Int64 {
+        if Task.isCancelled { throw MCError.canceled }
         let item = try await metadata(of: path)
         progress?(ProgressUpdate(completedItems: 1, totalItems: nil, message: item.name))
         switch item.kind {
@@ -172,7 +173,7 @@ public final class SftpVFS: VFS, @unchecked Sendable {
         try checkOwn(parent)
         let target = childPath(parent, name)
         do {
-            try await connection.client.createDirectory(atPath: absolute(target))
+            try await connection.currentClient().createDirectory(atPath: absolute(target))
             bumpRevision()
             return target
         } catch {
@@ -187,7 +188,7 @@ public final class SftpVFS: VFS, @unchecked Sendable {
         }
         let target = childPath(path.parent, name)
         do {
-            try await connection.client.rename(at: absolute(path), to: absolute(target))
+            try await connection.currentClient().rename(at: absolute(path), to: absolute(target))
             bumpRevision()
             return target
         } catch {
@@ -206,6 +207,7 @@ public final class SftpVFS: VFS, @unchecked Sendable {
     }
 
     private func deleteTree(_ path: VFSPath) async throws {
+        if Task.isCancelled { throw MCError.canceled }
         let item = try await metadata(of: path)
         if case .directory = item.kind {
             for child in try await listDirectory(at: path) {
@@ -214,9 +216,9 @@ public final class SftpVFS: VFS, @unchecked Sendable {
         }
         do {
             if case .directory = item.kind {
-                try await connection.client.rmdir(at: absolute(path))
+                try await connection.currentClient().rmdir(at: absolute(path))
             } else {
-                try await connection.client.remove(at: absolute(path))
+                try await connection.currentClient().remove(at: absolute(path))
             }
         } catch {
             throw map(error, path)
@@ -247,6 +249,11 @@ public final class SftpVFS: VFS, @unchecked Sendable {
         }
 
         func readChunk(max limit: Int) async throws -> Data? {
+            // Cancellation = «мгновенный close-channel» (06 §6.5 уточнение T-25).
+            if Task.isCancelled {
+                try? await file.close()
+                throw MCError.canceled
+            }
             let position = state.withLockedValue { $0 }
             guard position < totalLength else { return nil }
             let want = Int64(min(
@@ -276,7 +283,7 @@ public final class SftpVFS: VFS, @unchecked Sendable {
     public func openRead(_ path: VFSPath) async throws -> any ByteStream {
         try checkOwn(path)
         do {
-            let file = try await connection.client.openFile(filePath: absolute(path), flags: .read)
+            let file = try await connection.currentClient().openFile(filePath: absolute(path), flags: .read)
             // Size comes from the handle's own attributes (fstat semantics).
             let attributes = (try? await file.readAttributes()) ?? .none
             let length = attributes.size.map { Int64(clamping: $0) } ?? 0
@@ -310,6 +317,11 @@ public final class SftpVFS: VFS, @unchecked Sendable {
         }
 
         func write(_ data: Data) async throws {
+            // Cancellation = «мгновенный close-channel» (06 §6.5 уточнение T-25).
+            if Task.isCancelled {
+                try? await file.close()
+                throw MCError.canceled
+            }
             let position = state.withLockedValue { current -> Int64 in
                 current.offset += Int64(data.count)
                 return current.offset - Int64(data.count)
@@ -332,7 +344,7 @@ public final class SftpVFS: VFS, @unchecked Sendable {
             }
             do {
                 try await file.close()
-                let sftp = connection.client
+                let sftp = try connection.currentClient()
                 let finalPath = connection.sftpPath(finalTarget)
                 if let existing = try? await sftp.getAttributes(at: finalPath) {
                     if existing.size != nil {
@@ -346,10 +358,10 @@ public final class SftpVFS: VFS, @unchecked Sendable {
                 }
                 try await sftp.rename(at: connection.sftpPath(tempPath), to: finalPath)
             } catch let error as MCError {
-                try? await connection.client.remove(at: connection.sftpPath(tempPath))
+                try? await connection.currentClient().remove(at: connection.sftpPath(tempPath))
                 throw error
             } catch {
-                try? await connection.client.remove(at: connection.sftpPath(tempPath))
+                try? await connection.currentClient().remove(at: connection.sftpPath(tempPath))
                 throw SftpConnection.map(error, instance: connection.id, path: finalTarget)
             }
         }
@@ -363,7 +375,7 @@ public final class SftpVFS: VFS, @unchecked Sendable {
         let parent = path.parent
         let staged = childPath(parent, "." + (path.components.last ?? "file") + ".mc-partial")
         do {
-            let file = try await connection.client.openFile(
+            let file = try await connection.currentClient().openFile(
                 filePath: absolute(staged),
                 flags: [.write, .create, .truncate]
             )
@@ -383,7 +395,7 @@ public final class SftpVFS: VFS, @unchecked Sendable {
         if let permissions = attributes.posixPermissions {
             // Preserve the file-type bits of the current mode (server-side
             // setstat replaces the whole mode word — 06 §6.5).
-            let current = try await connection.client.getAttributes(at: absolute(path))
+            let current = try await connection.currentClient().getAttributes(at: absolute(path))
             let typeBits = (current.permissions ?? 0) & 0o170000
             sftpAttributes.permissions = typeBits | (UInt32(permissions) & 0o7777)
         }
@@ -394,7 +406,7 @@ public final class SftpVFS: VFS, @unchecked Sendable {
             )
         }
         do {
-            try await connection.client.setAttributes(at: absolute(path), to: sftpAttributes)
+            try await connection.currentClient().setAttributes(at: absolute(path), to: sftpAttributes)
             bumpRevision()
         } catch {
             throw map(error, path)

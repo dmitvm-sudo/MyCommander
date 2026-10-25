@@ -238,33 +238,3 @@ struct SftpPrivateKeyTests {
         }
     }
 }
-
-
-/// A tiny thread-safe capture box for decision-handler callbacks (they run on
-/// arbitrary executors under Swift 6 strict concurrency).
-private final class EventBox<Value: Sendable>: @unchecked Sendable {
-    private let lock = NSLock()
-    private nonisolated(unsafe) var value: Value
-
-    init(_ initial: Value) {
-        value = initial
-    }
-
-    func set(_ newValue: Value) {
-        lock.lock()
-        value = newValue
-        lock.unlock()
-    }
-
-    func update(_ transform: (inout Value) -> Void) {
-        lock.lock()
-        transform(&value)
-        lock.unlock()
-    }
-
-    var `get`: Value {
-        lock.lock()
-        defer { lock.unlock() }
-        return value
-    }
-}

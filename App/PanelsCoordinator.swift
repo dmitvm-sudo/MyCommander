@@ -729,6 +729,14 @@ final class PanelsCoordinator: NSObject {
             let side: FocusController.PanelSide = pane === leftPane ? .left : .right
             let viewModel = PanelViewModel(source: vfs)
             wireArchiveEnter(viewModel, side: side)
+            // T-25 (06 §6.5): supervisor states drive the status line
+            // («Reconnect…») and the post-reconnect reload — SFTP has no
+            // watch channel (05 §5.4), so the state callback IS the refresh.
+            connection.setOnStateChange { [weak self, weak viewModel] state in
+                Task { @MainActor in
+                    self?.handleSftpState(state, viewModel: viewModel)
+                }
+            }
             viewModel.onRootExit = { [weak pane, weak host, weak viewModel] in
                 guard let pane, let host, let viewModel else { return }
                 guard pane.fileListView.viewModel === viewModel else { return }
@@ -740,6 +748,19 @@ final class PanelsCoordinator: NSObject {
             presentConnectionFailure(error, record: record)
         } catch {
             presentConnectionFailure(.unexpected(underlying: error), record: record)
+        }
+    }
+
+    /// T-25: SFTP supervisor states → panel surface (06 §6.5 уточнение T-25).
+    private func handleSftpState(_ state: SftpConnectionState, viewModel: PanelViewModel?) {
+        guard let viewModel else { return }
+        switch state {
+        case .connected:
+            Task { await viewModel.reload() }
+        case .reconnecting(let attempt, _):
+            viewModel.onError?(.interrupted(reason: "reconnecting (attempt \(attempt))…"))
+        case .failed:
+            viewModel.onError?(.interrupted(reason: "connection lost — reconnect failed"))
         }
     }
 

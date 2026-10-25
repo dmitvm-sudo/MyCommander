@@ -5,6 +5,7 @@ import Crypto
 import DomainKit
 import Foundation
 import NIOCore
+import NIOPosix
 @preconcurrency import NIOSSH
 import VFSKit
 
@@ -68,6 +69,8 @@ struct SFPasswordAuth: NIOSSHServerUserAuthenticationDelegate {
 final class SFFileSystemDelegate: SFTPDelegate, @unchecked Sendable {
     let root: URL
     private let fm = FileManager.default
+    /// Optional server-side probe counter (T-25: idle-KA observability).
+    var realPathCounter: SFCounter?
 
     init(root: URL) {
         self.root = root
@@ -155,9 +158,10 @@ final class SFFileSystemDelegate: SFTPDelegate, @unchecked Sendable {
     }
 
     func realPath(for canonicalUrl: String, context: SSHContext) async throws -> [SFTPPathComponent] {
+        realPathCounter?.increment()
         // The whole canonical path rides in ONE component (Name.path joins by
         // «/», so the client's realpath loop converges immediately).
-        [SFTPPathComponent(filename: canonicalUrl, longname: canonicalUrl, attributes: .none)]
+        return [SFTPPathComponent(filename: canonicalUrl, longname: canonicalUrl, attributes: .none)]
     }
 
     func openDirectory(atPath path: String, context: SSHContext) async throws -> SFTPDirectoryHandle {
@@ -276,24 +280,68 @@ final class SFFileSystemDelegate: SFTPDelegate, @unchecked Sendable {
 }
 
 /// One live server + connected client pair for a single test.
-struct SFFixture {
+/// Test fixture — Sendable unchecked: `defer { Task { stop() } }` captures it
+/// across concurrency domains; mutation (`restart`) never races with the stop
+/// task in the test scenarios (restart precedes new connections).
+final class SFFixture: @unchecked Sendable {
     let server: SSHServer
+    let proxy: SFProxy
     let hostKey: NIOSSHPublicKey
+    /// The CLIENT-facing port — the proxy (the real SSH server sits behind it,
+    /// which is what makes the T-25 «cable pull» simulation possible).
     let port: Int
     let root: URL
+    /// Counts `realPath` server-side calls — the idle-KA probe observability.
+    let realPathCounter: SFCounter
+
+    init(
+        server: SSHServer,
+        proxy: SFProxy,
+        hostKey: NIOSSHPublicKey,
+        port: Int,
+        root: URL,
+        realPathCounter: SFCounter
+    ) {
+        self.server = server
+        self.proxy = proxy
+        self.hostKey = hostKey
+        self.port = port
+        self.root = root
+        self.realPathCounter = realPathCounter
+    }
 
     static func start(_ label: String) async throws -> SFFixture {
         let root = sfRoot(label)
-        let hostKey = NIOSSHPrivateKey(ed25519Key: Curve25519.Signing.PrivateKey())
-        let port = sfFreePort()
+        let privateKey = NIOSSHPrivateKey(ed25519Key: Curve25519.Signing.PrivateKey())
+        let counter = SFCounter()
+        let internalPort = sfFreePort()
         let server = try await SSHServer.host(
             host: "127.0.0.1",
-            port: port,
-            hostKeys: [hostKey],
+            port: internalPort,
+            hostKeys: [privateKey],
             authenticationDelegate: SFPasswordAuth()
         )
-        server.enableSFTP(withDelegate: SFFileSystemDelegate(root: root))
-        return SFFixture(server: server, hostKey: hostKey.publicKey, port: port, root: root)
+        let delegate = SFFileSystemDelegate(root: root)
+        delegate.realPathCounter = counter
+        server.enableSFTP(withDelegate: delegate)
+        // The proxy is the client-facing endpoint (T-25: a cable pull between
+        // proxy and server kills the client session while the server lives).
+        let proxy = try await SFProxy.start(listenPort: sfFreePort(), upstreamPort: internalPort)
+        return SFFixture(
+            server: server,
+            proxy: proxy,
+            hostKey: privateKey.publicKey,
+            port: proxy.listenPort,
+            root: root,
+            realPathCounter: counter
+        )
+    }
+
+    /// T-25: simulates «перерубить сеть» — every live client session dies
+    /// (both directions closed); the SSH SERVER itself stays up, so the
+    /// supervisor's reconnect (same address, same host key) succeeds.
+    func pullCable() async {
+        await proxy.severAll()
     }
 
     func connect() async throws -> SftpConnection {
@@ -307,7 +355,104 @@ struct SFFixture {
     }
 
     func stop() async {
+        await proxy.stop()
         try? await server.close()
+    }
+}
+
+/// A dumb TCP proxy (client-facing listener ↔ upstream SSH server). Lives in
+/// the T-25 test support only: it is what makes an honest «перерубить сеть»
+/// possible — `severAll()` drops every live pipe without touching the server.
+final class SFProxy: @unchecked Sendable {
+    let listenPort: Int
+    private let upstreamPort: Int
+    private var server: Channel?
+    private let lock = NSLock()
+    private nonisolated(unsafe) var pipes: [Channel] = []
+
+    private init(listenPort: Int, upstreamPort: Int) {
+        self.listenPort = listenPort
+        self.upstreamPort = upstreamPort
+    }
+
+    static func start(listenPort: Int, upstreamPort: Int) async throws -> SFProxy {
+        let proxy = SFProxy(listenPort: listenPort, upstreamPort: upstreamPort)
+        let bootstrap = ServerBootstrap(group: MultiThreadedEventLoopGroup.singleton)
+            .serverChannelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SocketOptionName(SO_REUSEADDR)), value: 1)
+            .childChannelOption(ChannelOptions.socket(SocketOptionLevel(IPPROTO_TCP), SocketOptionName(TCP_NODELAY)), value: 1)
+            .childChannelInitializer { [weak proxy] channel in
+                guard let proxy else {
+                    return channel.close()
+                }
+                return proxy.pipe(toUpstream: channel)
+            }
+        proxy.server = try await bootstrap.bind(host: "127.0.0.1", port: listenPort).get()
+        return proxy
+    }
+
+    /// Pairs one accepted (client-side) channel with a fresh upstream channel.
+    private func pipe(toUpstream downstream: Channel) -> EventLoopFuture<Void> {
+        ClientBootstrap(group: downstream.eventLoop)
+            .channelOption(ChannelOptions.socket(SocketOptionLevel(IPPROTO_TCP), SocketOptionName(TCP_NODELAY)), value: 1)
+            .connect(host: "127.0.0.1", port: upstreamPort)
+            .flatMap { upstream -> EventLoopFuture<Void> in
+                self.track(downstream, upstream)
+                return downstream.pipeline
+                    .addHandler(SFPipeHandler(peer: upstream))
+                    .flatMap {
+                        upstream.pipeline.addHandler(SFPipeHandler(peer: downstream))
+                    }
+            }
+    }
+
+    private func track(_ downstream: Channel, _ upstream: Channel) {
+        lock.lock()
+        pipes.append(contentsOf: [downstream, upstream])
+        lock.unlock()
+    }
+
+    /// The cable pull: close every live pipe; the client sees EOF/error.
+    func severAll() async {
+        let doomed: [Channel] = lock.withLock {
+            let all = pipes
+            pipes.removeAll()
+            return all
+        }
+        for channel in doomed {
+            channel.close(promise: nil)
+        }
+    }
+
+    func stop() async {
+        try? await server?.close()
+        await severAll()
+    }
+}
+
+/// Forwards bytes to the peer channel; closes the peer on EOF/error.
+private final class SFPipeHandler: ChannelInboundHandler, @unchecked Sendable {
+    typealias InboundIn = ByteBuffer
+    typealias OutboundOut = ByteBuffer
+
+    private let peer: Channel
+
+    init(peer: Channel) {
+        self.peer = peer
+    }
+
+    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+        let buffer = Self.unwrapInboundIn(data)
+        peer.writeAndFlush(buffer, promise: nil)
+    }
+
+    func channelInactive(context: ChannelHandlerContext) {
+        peer.close(promise: nil)
+        context.fireChannelInactive()
+    }
+
+    func errorCaught(context: ChannelHandlerContext, error: Error) {
+        peer.close(promise: nil)
+        context.close(promise: nil)
     }
 }
 
@@ -315,4 +460,52 @@ struct SFFixture {
 /// works: the tests build paths from `vfs.id`).
 func sfPath(_ vfs: SftpVFS, _ components: String...) -> VFSPath {
     VFSPath(root: vfs.id, components: components)
+}
+
+/// Lock-protected counter for @Sendable progress/probe callbacks (the `sf`
+/// name-space; shared by SftpVFSTests and HostKeyPolicyTests).
+final class SFCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private nonisolated(unsafe) var value_ = 0
+
+    func increment() {
+        lock.lock()
+        value_ += 1
+        lock.unlock()
+    }
+
+    var value: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return value_
+    }
+}
+
+/// A tiny thread-safe capture box for decision-handler callbacks (they run on
+/// arbitrary executors under Swift 6 strict concurrency).
+final class EventBox<Value: Sendable>: @unchecked Sendable {
+    private let lock = NSLock()
+    private nonisolated(unsafe) var value: Value
+
+    init(_ initial: Value) {
+        value = initial
+    }
+
+    func set(_ newValue: Value) {
+        lock.lock()
+        value = newValue
+        lock.unlock()
+    }
+
+    func update(_ transform: (inout Value) -> Void) {
+        lock.lock()
+        transform(&value)
+        lock.unlock()
+    }
+
+    var `get`: Value {
+        lock.lock()
+        defer { lock.unlock() }
+        return value
+    }
 }

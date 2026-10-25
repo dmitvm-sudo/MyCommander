@@ -153,6 +153,22 @@ connect (passphrase хранится в Keychain по контракту, но v
 задокументированная рамка, issue на v1.x). RSA/ECDSA-ключи серверных хостов — через
 wire-format fingerprint работают без ограничений (пининг не зависит от алгоритма).
 
+*Уточнение T-25 (robustness — 06 §6.5 «Жизненный цикл»):* **SftpConnection —
+supervisor**: idle-KA = SFTP-проба `realPath(".")` каждые 30 с (Citadel 0.12.1 не
+экспонирует SSH-level keepalive); probe-отказ → reconnect-цикл. **Reconnect
+backoff 1/2/4/8 с, max 5 попыток** (расписание `[1,2,4,8,8]` — конфигурируемо в
+`SftpConnectionConfig` для тестов); после исчерпания — состояние `.failed`
+(панель показывает ошибку с «Reconnect…»; кнопка ручного reconnect — v1.x).
+**Состояния**: `.connected` / `.reconnecting(attempt:nextDelay:)` /
+`.failed`; `onStateChange: (@Sendable (SftpConnectionState) -> Void)?` — App
+вешает статус-строку и авто-reload панели на `.connected` (watch-канала у SFTP
+нет — 05 §5.4). **Таймауты**: `connectTimeout` (Citadel `SSHClient.connect`,
+v1 = 10 с). **Отмена операций** («мгновенный close-channel»): cooperative
+cancellation на границах чанков — `SftpByteStream.readChunk`/
+`SftpStreamWriter.write` и рекурсивные deleteTree/walkSize проверяют
+`Task.isCancelled`, при отмене немедленно закрывают SFTP-хэндл и бросают
+`.canceled` (staged `.mc-partial` остаётся до явного retry — 06 §6.2).
+
 ## 6.6 EnginesKit
 
 - **FilterEngine** (quick filter F-10): подстрока/fuzzy (скорл-Damerau-подобная, но простая prefix-matching по умолчанию substring), обработка ≤ 50 мс на 50k (по Int-index, без создания строк повторно; мемоизация префикса ввода).
