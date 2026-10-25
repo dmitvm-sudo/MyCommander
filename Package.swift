@@ -20,6 +20,7 @@ let moduleDependencyNames: [String: [String]] = [
     "ListViewKit": ["DomainKit", "EnginesKit", "FileOpsKit"],   // T-05 UI + T-07 фильтр + T-10 ProgressWindow (слои 04)
     "ServicesKit": ["DomainKit"],   // T-08: SessionStore сериализует VFSPath (§5.1 Codable)
     "FileOpsKit": ["DomainKit", "VFSKit"],   // T-10: планы/executor над VFS; локальные ветки через LocalVFS (слои 04)
+    "TerminalKit": ["DomainKit"],   // T-14: ShellSession exec-ветка мапит ошибки в MCError (§5.8)
 ]
 
 /// Зависимости, нужные ТОЛЬКО тест-таргетам (fake-адаптеры VFSKit в UI-тестах:

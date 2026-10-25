@@ -93,6 +93,22 @@ enum ListerCodec { decodeTextPage / hexPage / … }  // ListViewKit, чиста�
 - `⌃\`` toggle нижней partiti (split: терминал 40 % высоты); авто-CD следит за панелью (debounced, опция off); выбор текста/копипаст/вставка path панели по `⌃⇧V`.
 - Политика процессов: child живёт, когда панель скрыта; kill при закрытии окна с подтверждением (если есть запущенные задачи).
 
+- **Контракт v1 (T-14 — командная строка F-17а, exec-ветка):**
+```swift
+struct ShellOutcome: Sendable, Equatable {      // один выстрел, НЕ PTY (PTY — F-17, M3)
+    var exitCode: Int32
+    var standardOutput: String
+    var standardError: String
+}
+enum ShellSession {
+    // /bin/sh -c «command»; collect через pipe-readability + termination-continuation.
+    static func exec(command: String, workingDirectory: URL?,
+                     environment: [String: String]? = nil) async throws -> ShellOutcome
+}
+```
+- `CommandBar` (ListViewKit, внизу главного окна — 07 §7.2): чистая логика без AppKit и VFS — `CommandBarParser.parse` → `.cd/.mkdir/.open/.shell`/`.invalid` (первое слово — до расширения плейсхолдеров, иначе пробелы в путях рвут токен); плейсхолдеры `%f` (имя под курсором), `%F` (полный путь), `%d`/`%D` (каталоги активной/противоположной панелей), `%s` (список выделенных, при пустом выделении — файл под курсором); подстанованный путь цитируется shell-вариантом при пробелах/кавычках (для vfs-команд значения разворачиваются `unquote`), `%%` ≡ литерал `%`, неизвестные `%x` остаются как есть; `CommandHistory` — append-only, dedup последовательных, ↑/↓ c черновиком: ↑ от черновика → последняя, дальше к старым, ↓ вниз до черновика. Мини-консоль вывода — под строкой ввода (сворачиваемая `[^]`).
+- Исполнение — в App (ListViewKit не знает VFS): `cd`/`open` — резолв кандидатов (`~`, абсолют, относительный) + `metadata`, каталог → `openDirectory`, файл (LocalVFS) → `NSWorkspace.open`; `mkdir` — `VFS.createDirectory` (v1 одно имя, вложенность — честная ошибка); `!` — `ShellSession.exec` с cwd активной панели (только LocalVFS, иначе понятная ошибка); вывод/ошибки — в мини-консоль. Tab-автодополнение путей и `touch`/`du`/`find` — следующая версия.
+
 ## 6.9 ServicesKit
 
 - **SettingsStore**: default-мерж с user JSON; применение мгновенное (pub-всем модулям по `DidUpdate` каналу);

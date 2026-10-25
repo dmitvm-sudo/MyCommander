@@ -28,13 +28,22 @@ final class MainWindowController: NSWindowController {
         splitView.addArrangedSubview(coordinator.rightPane.view)
 
         guard let contentView = window.contentView else { return }
+        // 07 §7.2: the command bar (⌘L) with its mini console sits below the
+        // panel split, spanning the full window width. The App driver owns
+        // the panel state; the coordinator orchestrates cd/mkdir/open/!.
         splitView.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(splitView)
+        let commandBar = coordinator.commandBar
+        commandBar.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(commandBar)
         NSLayoutConstraint.activate([
             splitView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
             splitView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
             splitView.topAnchor.constraint(equalTo: contentView.topAnchor),
-            splitView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
+            splitView.bottomAnchor.constraint(equalTo: commandBar.topAnchor, constant: -4),
+            commandBar.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+            commandBar.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
+            commandBar.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
         ])
     }
 

@@ -5,6 +5,7 @@ import DomainKit
 import FileOpsKit
 import ListViewKit
 import ServicesKit
+import TerminalKit
 import VFSKit
 
 /// Active/opposite panel dispatcher (docs/SDD/11: PanelsCoordinator — активная/
@@ -15,6 +16,9 @@ import VFSKit
 final class PanelsCoordinator: NSObject {
     let focus = FocusController()
     let router = CommandRouter()
+    /// Command bar (⌘L, F-17а / §6.8 v1): hosted by MainWindowController at
+    /// the window bottom; the driver below parses and executes its lines.
+    let commandBar = CommandBarView()
     let keymapStore: KeymapStore
     private(set) var leftPane: PanelViewController!
     private(set) var rightPane: PanelViewController!
@@ -74,6 +78,24 @@ final class PanelsCoordinator: NSObject {
             events: transferEvents
         )
         registerCommandHandlers()
+        wireCommandBar()
+    }
+
+    /// F-17а wiring: the bar submits raw lines, 07 §7.2 single-focus contract
+    /// on Esc (clear the line first, second Esc returns to the panel list).
+    private func wireCommandBar() {
+        commandBar.onSubmit = { [weak self] raw in
+            self?.handleCommandBarLine(raw)
+        }
+        commandBar.onEscape = { [weak self] in
+            guard let self else { return }
+            if !commandBar.inputText.isEmpty {
+                commandBar.clearInput()
+            } else {
+                activatePanelList()
+            }
+        }
+        commandBar.updatePrompt(displayPath: posixPath(homePath))
     }
 
     /// T-09: the bundled 07-map profiles; «tc» must decode first — it is the
@@ -218,6 +240,10 @@ final class PanelsCoordinator: NSObject {
         router.register(.focusLeft) { [weak self] in self?.focus.activate(.left) }
         router.register(.focusRight) { [weak self] in self?.focus.activate(.right) }
         router.register(.swapPanels) { [weak self] in self?.swapPanels() }
+        // Command bar (⌘L, T-14 / F-17а v1).
+        router.register(.focusCommandBar) { [weak self] in
+            self?.commandBar.focusInput()
+        }
 
         // Tabs (F-2: ⌘T / ⌘W / ⌘⇧T, ⌃Tab / ⌃⇧Tab).
         router.register(.newTab) { [weak self] in
@@ -292,6 +318,189 @@ final class PanelsCoordinator: NSObject {
         router.register(.quickLook) { [weak self] in
             self?.quickLookSelection()
         }
+    }
+
+    // MARK: Command bar driver (⌘L — F-17а, T-14; 06 §6.8 v1)
+
+    /// Raw typed line → expanded+parsed command → executed against the
+    /// active panel's VFS. ListViewKit knows nothing about VFS — the driver
+    /// supplies panel state here.
+    private func handleCommandBarLine(_ raw: String) {
+        guard let pane = activePane else { return }
+        switch CommandBarParser.parse(line: raw, context: commandBarContext(for: pane)) {
+        case .empty:
+            // Enter on the empty line behaves like Esc: back to the panel.
+            activatePanelList()
+        case let .invalid(message):
+            commandBar.appendOutput(message, isError: true)
+        case let .command(command):
+            Task { await executeCommand(command, in: pane) }
+        }
+    }
+
+    /// Placeholder context of the active panel (07 «Command bar»): cursor
+    /// item, both directories, visible-order selection.
+    private func commandBarContext(for pane: PanelViewController) -> CommandPlaceholderContext {
+        let viewModel = pane.fileListView.viewModel
+        let directory = viewModel.path ?? homePath
+        let directoryText = posixPath(directory)
+        let oppositeText = posixPath((oppositePane ?? pane).fileListView.viewModel.path ?? homePath)
+
+        let selection = viewModel.effectiveSelection
+        var selectedNames: [String] = []
+        for index in 0 ..< viewModel.visibleCount {
+            guard let item = viewModel.item(atVisibleIndex: index), selection.contains(item.id) else { continue }
+            selectedNames.append(item.name)
+        }
+        let cursor = viewModel.item(atVisibleIndex: viewModel.cursor)
+        return CommandPlaceholderContext(
+            cursorName: cursor?.name,
+            cursorPath: cursor.map { directoryText + "/" + $0.name },
+            activeDirectory: directoryText,
+            oppositeDirectory: oppositeText,
+            selectionNames: selectedNames
+        )
+    }
+
+    private func executeCommand(_ command: CommandBarCommand, in pane: PanelViewController) async {
+        let viewModel = pane.fileListView.viewModel
+        let vfs: any VFS = viewModel.source
+
+        switch command {
+        case let .cd(path):
+            guard let target = await resolveEntry(path, current: viewModel.path ?? homePath, vfs: vfs, kind: .directory) else {
+                commandBar.appendOutput(String(localized: "commandBar.error.pathNotFound \(path)"), isError: true)
+                return
+            }
+            do {
+                try await viewModel.openDirectory(at: target)
+                commandBar.updatePrompt(displayPath: posixPath(viewModel.path ?? target))
+            } catch let error as MCError {
+                commandBar.appendOutput(error.localizedDescription, isError: true)
+            } catch {
+                commandBar.appendOutput(String(describing: error), isError: true)
+            }
+        case let .mkdir(name):
+            let parts = commandPathComponents(name)
+            guard parts.count == 1, !parts[0].isEmpty else {
+                commandBar.appendOutput(String(localized: "commandBar.error.mkdirNesting \(name)"), isError: true)
+                return
+            }
+            do {
+                _ = try await vfs.createDirectory(parts[0], in: viewModel.path ?? homePath)
+                await viewModel.reload()
+            } catch let error as MCError {
+                commandBar.appendOutput(error.localizedDescription, isError: true)
+            } catch {
+                commandBar.appendOutput(String(describing: error), isError: true)
+            }
+        case let .open(path):
+            guard let target = await resolveEntry(path, current: viewModel.path ?? homePath, vfs: vfs, kind: nil) else {
+                commandBar.appendOutput(String(localized: "commandBar.error.pathNotFound \(path)"), isError: true)
+                return
+            }
+            if let item = try? await vfs.metadata(of: target), matchesKind(item.kind, .directory) {
+                do { try await viewModel.openDirectory(at: target) } catch {
+                    commandBar.appendOutput(String(describing: error), isError: true)
+                }
+                commandBar.updatePrompt(displayPath: posixPath(viewModel.path ?? target))
+            } else if let local = vfs as? LocalVFS {
+                NSWorkspace.shared.open(local.url(for: target))
+            } else {
+                commandBar.appendOutput(String(localized: "commandBar.error.shellLocalOnly"), isError: true)
+            }
+        case let .shell(command):
+            guard let local = vfs as? LocalVFS else {
+                commandBar.appendOutput(String(localized: "commandBar.error.shellLocalOnly"), isError: true)
+                return
+            }
+            commandBar.appendOutput("$ \(command)")
+            do {
+                let outcome = try await ShellSession.exec(
+                    command: command,
+                    workingDirectory: local.url(for: viewModel.path ?? homePath)
+                )
+                if !outcome.standardOutput.isEmpty {
+                    commandBar.appendOutput(outcome.standardOutput)
+                }
+                if !outcome.standardError.isEmpty {
+                    commandBar.appendOutput(outcome.standardError, isError: true)
+                }
+                if outcome.exitCode != 0 {
+                    commandBar.appendOutput(
+                        String(localized: "commandBar.console.exitCode \(outcome.exitCode)"),
+                        isError: true
+                    )
+                }
+            } catch {
+                commandBar.appendOutput(error.localizedDescription, isError: true)
+            }
+        }
+    }
+
+    /// `~`, absolute and panel-relative spellings (07 «Command bar»); one
+    /// normalized candidate. `kind: nil` accepts any entry (open).
+    private func resolveEntry(
+        _ raw: String,
+        current: VFSPath,
+        vfs: any VFS,
+        kind: VFSItemKind? = nil
+    ) async -> VFSPath? {
+        var components: [String]
+        if raw == "~" || raw.hasPrefix("~/") {
+            components = homePath.components
+            if raw.count > 2 {
+                components += commandPathComponents(String(raw.dropFirst(2)))
+            }
+        } else if raw.hasPrefix("/") {
+            components = commandPathComponents(raw)
+        } else {
+            components = current.components + commandPathComponents(raw)
+        }
+        let candidate = VFSPath(root: vfs.id, components: components)
+        guard let item = try? await vfs.metadata(of: candidate) else { return nil }
+        guard kind == nil || matchesKind(item.kind, kind) else { return nil }
+        return candidate
+    }
+
+    /// `VFSItemKind` carries an associated value (symlink target) and is not
+    /// Equatable; symlinks pass for any wanted kind (native resolution).
+    private func matchesKind(_ actual: VFSItemKind, _ wanted: VFSItemKind?) -> Bool {
+        guard let wanted else { return true }
+        switch (actual, wanted) {
+        case (.directory, .directory), (.file, .file), (.special, .special):
+            return true
+        case (.symlink, _):
+            return true
+        default:
+            return false
+        }
+    }
+
+    private func commandPathComponents(_ raw: String) -> [String] {
+        var result: [String] = []
+        for segment in raw.split(separator: "/", omittingEmptySubsequences: true) {
+            switch segment {
+            case ".":
+                continue
+            case "..":
+                if !result.isEmpty { result.removeLast() }
+            default:
+                result.append(String(segment).precomposedStringWithCanonicalMapping)
+            }
+        }
+        return result
+    }
+
+    private func posixPath(_ path: VFSPath) -> String {
+        path.components.isEmpty ? "/" : "/" + path.components.joined(separator: "/")
+    }
+
+    /// Returns focus from the command bar to the active panel list.
+    private func activatePanelList() {
+        guard let pane = activePane ?? leftPane else { return }
+        let table = pane.listTableView
+        table.window?.makeFirstResponder(table)
     }
 
     // MARK: View: Lister / editor / Quick Look (F-8, F-9 — T-13)

@@ -39,6 +39,8 @@ enum MenuBuilder {
             ItemSpec(titleKey: "menu.swapPanels", command: .swapPanels),
             ItemSpec(titleKey: "menu.viewFull", command: .viewFull),
             ItemSpec(titleKey: "menu.viewBrief", command: .viewBrief),
+            // F-17а (T-14): ⌘L command bar focus.
+            ItemSpec(titleKey: "menu.commandBar", command: .focusCommandBar),
         ]),
         SectionSpec(titleKey: "menu.selection", items: [
             ItemSpec(titleKey: "menu.selectAll", command: .selectAll),
