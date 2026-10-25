@@ -80,6 +80,15 @@ public final class PanelViewModel {
     /// the gate owner decides what happens instead (locked tabs divert the
     /// opened directory into a fresh tab). `nil` gate means always allowed.
     public var navigationGate: ((VFSPath) -> Bool)?
+    /// Уточнение T-21 (06 §6.1, archive interlude): Enter on a file/special entry
+    /// that is an archive container — the owner (App assembly, set for every VM)
+    /// mounts the archive and swaps the tab's view model. `true` = consumed (the
+    /// item is «opened» by the handler); `false`/`nil` — the previous behaviour.
+    public var openEntryHandler: ((VFSItem) async -> Bool)?
+    /// Уточнение T-21: ⌘↑ at the root of an ARCHIVE panel exits the interlude —
+    /// App rebinds the panel view model back to the host. Only archive VMs carry
+    /// it (local panels keep the historical no-op behaviour at the root).
+    public var onRootExit: (() async -> Void)?
     /// Session restore (T-08): a selection applied at the next non-refresh
     /// listing (a fresh tab loading its directory).
     public func stageSelectionRestore(_ identities: Set<VFSPath>) {
@@ -320,15 +329,22 @@ public final class PanelViewModel {
             do { try await loadAndPublish(target); return target }
             catch { onError?(normalize(error)); return nil }
         case .file, .special:
+            guard let openEntryHandler else { return nil }
+            if await openEntryHandler(entry) { return entry.id }
             return nil
         }
     }
 
-    /// ⌘↑. `false` at the root, when denied by the gate, or on failure
-    /// (failure also goes to `onError`).
+    /// ⌘↑. Inside an archive panel the root exit goes through `onRootExit`
+    /// (App rebinds the host view model; 06 §6.1 T-21). `false` at the root
+    /// without the hook, when denied by the gate, or on failure (failure also
+    /// goes to `onError`).
     @discardableResult
     public func goUp() async -> Bool {
-        guard let path, !path.components.isEmpty else { return false }
+        guard let path, !path.components.isEmpty else {
+            await onRootExit?()   // archive interlude: back to the host panel
+            return false
+        }
         let parent = VFSPath(
             root: path.root,
             components: Array(path.components.dropLast()),

@@ -21,6 +21,8 @@
 
 **Фокус-модель:** `FocusController` знает activePanel; команды (`CommandRouter`) всегда получают `activePanel` + `otherPanel` контекст. Tab-переключение — `⌃Tab`/клик; фокус возвращается в список.
 
+*Уточнение T-21 (архив-интерлюдия, F-12):* `PanelViewModel` получает два `@MainActor`-hook'а, ставимые App в фабрике вкладок: `openEntryHandler: (VFSItem) async -> Bool` (consume-контракт: true — entry открыт обработчиком VM-навигации; false/nil — прежний no-op для file/special) и `onRootExit: () async -> Void` (goUp-at-root; локальные панели без него ведут себя как прежде). `PanelTabList` получает `swapActiveTabViewModel(_ newViewModel:) -> PanelViewModel?` — swap в активной вкладке: unwire старого VM (callback+watch), wire нового, id/lock сохраняются; возврат — тем же API (watch/callbacks прицепляются заново).
+
 ## 6.2 Движок операций (FileOpsKit)
 
 **Трехслойность:**
@@ -50,6 +52,26 @@
 - Форматы: **read** — zip (ZIPFoundation), tar·gz·xz·bz2 (SWCompression), 7z (v1.0 SHOULD); **write** — zip (ZIPFoundation, уровень/пароль — базовые опции в диалоге Pack).
 - Read-cache: индексируем entries при открытии (отложенно к атрибутам для больших архивов); per-file extract — через temp-dir под `~/Library/Caches/MyCommander/extract/`, истечение 24 ч или при выходе.
 - Ограничения честно отражены в `capabilities` (canWrite = false вне zip; canWatch = false).
+
+*Уточнение T-21 (read v1):* архив-панель — «интерлюдия»: `ArchiveVFS(reading:)` монтируется в
+`VFSRegistry` (VFSKit, §5.3; `mountArchive(reading:)` — идемпотентно, id `kind: .archive`,
+specID = путь:size:mtime → повторная «установка» того же файла возвращает тот же инстанс;
+регистр вытесняет по FIFO при >64). «Открытие по Enter» перехватывает `PanelViewModel.openEntryHandler`
+(App ставит его в фабрике вкладок; consume-контракт: true = entry открыт), панель перебиндивается
+на новый `PanelViewModel(source: ArchiveVFS)` через `PanelTabList.swapActiveTabViewModel(_:)`
+(id/lock вкладки сохраняются, история — заново; выход — goUp-at-root через `PanelViewModel.onRootExit`
+→ rebind предыдущего VM; локальные панели ведут себя как раньше). Read: zip — ZIPFoundation
+(центральный каталог, стрим-извлечение; не-UTF8-имена → CP866-fallback через `pathEncoding`);
+tar — свой стрим-ридер по 512-байтовым заголовкам поверх FileHandle (ustar-имя+prefix, PAX «path»/«size»,
+GNU «L»/«K», typeflag 0·\0 (файл), 5 (dir), 2 (symlink → item, данные никогда не следуют), 1·3·4·6 —
+заголовок пропускается; RAM — O(1) на entry, требует хвостовые токена «два нуля-блока» лояльнее спеки);
+gz/xz/bz2 — единичные инстансы, декод контейнера SWCompression-полностью в RAM **при доступе**
+(v1-лимит честно: сжатый контейнер ≤ RAM; zip/tar — честные >4 GB); распакованный tar-потом
+стримится из кэш-файла. Индекс строится при открытии (headers only); extract-entry — лениво,
+в `…/extract/<spec>/` с атомарным rename, кэш-жизнь — процесс + чистка при выходе (24 ч — v1.x).
+Path-traversal блок: имена связываются архивной нормализацией VFSPath-семантики («..» при корневом
+выходе выбрасывает entry, вложенные «..» клампятся внутри архива); symlink-entries НЕ создаются
+на диске и НЕ открываются (vfsUnsupported) — extract/openRead физически не выходят за кэш-каталог.
 
 ## 6.5 SftpVFS (Citadel)
 

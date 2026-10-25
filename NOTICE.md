@@ -9,7 +9,11 @@
 3. Добавить зависимость в `Package.swift`; закоммитить обновлённый `Package.resolved`.
 
 ## Текущие зависимости сборки
-Пусто — модули-заглушки (T-01) без внешних зависимостей.
+| Пакет | Лицензия | Назначение | Появился в |
+|---|---|---|---|
+| weichsel/ZIPFoundation | MIT | ZIP read (T-21), ZIP write (T-22) (F-12) | M2 (T-21) |
+| tsolomko/SWCompression | MIT | tar/gz/xz/bz2 read (F-12; 7z-read — v1.0 SHOULD) | M2 (T-21) |
+| tsolomko/BitByteData | MIT | транзитивная зависимость SWCompression (bit readers) | M2 (T-21) |
 
 ## Запланировано (лицензию подтвердить при добавлении)
 | Пакет | Лицензия | Назначение | Появится в |

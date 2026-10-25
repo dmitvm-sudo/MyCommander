@@ -55,8 +55,10 @@ public protocol VFS: AnyObject, Sendable {
 
 /// Registry behind «диски»/volume picker (contract §5.3). Concrete registry lives
 /// in VFSKit (`VFSRegistry`, T-04+); this protocol lets other kits mock mounts.
+/// Уточнение T-21: `instance(for:)` returns `nil` for an unregistered id
+/// (§5.3 v1 sketch implied a precondition — an optional keeps mount probes honest).
 public protocol VFSRegistryProtocol: Sendable {
-    func instance(for root: VFSInstanceID) -> any VFS
+    func instance(for root: VFSInstanceID) -> (any VFS)?
     func register(_ vfs: any VFS) async
     func mountedVolumes() async -> [VFSInstanceID]
 }

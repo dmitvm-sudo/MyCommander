@@ -81,7 +81,7 @@ struct VFSCapabilities: Sendable {
 
 ```swift
 protocol VFSRegistryProtocol: Sendable {
-    func instance(for root: VFSInstanceID) -> VFS
+    func instance(for root: VFSInstanceID) -> (any VFS)?   // уточнение T-21: nil = не зарегистрирован (без precondition)
     func register(_ vfs: VFS) async
     func mountedVolumes() async -> [VFSInstanceID]   // для «дисков»/volume picker
 }

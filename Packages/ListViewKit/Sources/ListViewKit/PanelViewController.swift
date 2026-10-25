@@ -27,6 +27,16 @@ public final class PanelViewController: NSViewController {
         refreshFromTabList(force: true)
     }
 
+    /// Уточнение T-21 (06 §6.1/§6.4, archive interlude): swaps the ACTIVE tab's
+    /// view model in place and refreshes the strip + list. Returns the previous
+    /// view model — the ⌘↑-root-exit path rebinds it back.
+    @discardableResult
+    public func swapActiveTabViewModel(_ newViewModel: PanelViewModel) -> PanelViewModel? {
+        let previous = tabList.swapActiveTabViewModel(newViewModel)
+        refreshFromTabList(force: true)
+        return previous
+    }
+
     /// Session snapshots (T-08) are assembled by the App layer from the tab
     /// model; the controller only guarantees the tab list is live.
     public func snapshotTabs() -> (tabs: [PanelTab], activeIndex: Int) {

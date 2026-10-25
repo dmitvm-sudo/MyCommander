@@ -38,6 +38,9 @@ final class PanelsCoordinator: NSObject {
     /// Volume mount/unmount fan-out (§5.4 `.volumeEvent`).
     private let volumeMonitor = VolumeMonitor()
     private var volumeTask: Task<Void, Never>?
+    /// F-12 (T-21): archive mounts («архивы как папки») — idempotent identifiers,
+    /// FIFO eviction (§6.4), per-mount extract cache under `…/extract/`.
+    private let archiveRegistry = VFSRegistry()
     /// Session persistence (F-2: tabs survive relaunch).
     private let sessionStore: SessionStore
 
@@ -74,9 +77,9 @@ final class PanelsCoordinator: NSObject {
         // F-2: the tab stacks survive relaunch; a missing/foreign session falls
         // back to one home tab per panel.
         if !restoreSession() {
-            leftTabList = makeTabList()
+            leftTabList = makeTabList(for: .left)
             leftTabList.seed(with: initialSeedPath)
-            rightTabList = makeTabList()
+            rightTabList = makeTabList(for: .right)
             rightTabList.seed(with: initialSeedPath)
         }
 
@@ -207,15 +210,58 @@ final class PanelsCoordinator: NSObject {
         volumeTask?.cancel()
     }
 
-    private func makeTabList() -> PanelTabList {
+    private func makeTabList(for side: FocusController.PanelSide) -> PanelTabList {
         PanelTabList(
-            makeViewModel: { [fileSystem, watcher] in
+            makeViewModel: { [weak self, fileSystem, watcher] in
                 let viewModel = PanelViewModel(source: fileSystem)
                 viewModel.watchEngine = watcher
+                self?.wireArchiveEnter(viewModel, side: side)   // 06 §6.1 T-21: every VM
                 return viewModel
             },
             watchEngine: watcher
         )
+    }
+
+    /// «Общий» hook-сет для вкладок (06 §6.1 T-21): Enter на файле-архиве —
+    /// смонтировать и подсадить во вкладку; для не-архивов — прежнее поведение.
+    private func wireArchiveEnter(_ viewModel: PanelViewModel, side: FocusController.PanelSide) {
+        viewModel.openEntryHandler = { [weak self, side] item in
+            guard let self else { return false }
+            return await self.openEntryAsArchive(item, side: side)
+        }
+    }
+
+    /// F-12 (T-21): Enter на архиве — mount в реестре → interlude-VM поверх
+    /// активной вкладки (swap; id/lock сохраняются). `false` для не-архивов.
+    private func openEntryAsArchive(_ item: VFSItem, side: FocusController.PanelSide) async -> Bool {
+        guard item.id.root.kind == .localDisk, let url = item.id.displayURL else { return false }
+        guard let archive = try? await archiveRegistry.mountArchive(reading: url) else { return false }
+        guard let pane = side == .left ? leftPane : rightPane else { return false }
+        guard let host = pane.tabList.activeTab?.viewModel else { return false }
+        let interlude = PanelViewModel(source: archive)
+        interlude.watchEngine = watcher   // canWatch = false: «мёртвый» пустой поток (§5.4)
+        wireArchiveEnter(interlude, side: side)
+        interlude.onRootExit = { [weak self, weak interlude, side, host] in
+            guard let self, let interlude else { return }
+            self.exitArchiveInterlude(interlude, host: host, side: side)
+        }
+        // Root listing carries the host file URL for the tab title / QL export.
+        do {
+            try await interlude.openDirectory(at: VFSPath(root: archive.id, displayURL: url))
+        } catch {
+            return false
+        }
+        pane.swapActiveTabViewModel(interlude)
+        return true
+    }
+
+    /// ⌘↑ at the archive root — rebind «назад» на хост-VM панели (06 §6.1 T-21).
+    private func exitArchiveInterlude(
+        _ interlude: PanelViewModel, host: PanelViewModel, side: FocusController.PanelSide
+    ) {
+        guard let pane = side == .left ? leftPane : rightPane else { return }
+        guard pane.fileListView.viewModel === interlude else { return }   // interlude already exited
+        _ = pane.swapActiveTabViewModel(host)
     }
 
     /// Loads the initial listing state (called at app launch). Restored tabs
@@ -251,8 +297,8 @@ final class PanelsCoordinator: NSObject {
         guard let snapshot = sessionStore.load(),
               !snapshot.left.tabs.isEmpty, !snapshot.right.tabs.isEmpty
         else { return false }
-        leftTabList = makeTabList()
-        rightTabList = makeTabList()
+        leftTabList = makeTabList(for: .left)
+        rightTabList = makeTabList(for: .right)
         restorePanel(leftTabList, from: snapshot.left)
         restorePanel(rightTabList, from: snapshot.right)
         leftTabList.selectTab(at: min(snapshot.left.activeIndex, max(leftTabList.tabs.count - 1, 0)))

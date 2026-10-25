@@ -3,6 +3,13 @@ import PackageDescription
 
 /// SPM-граф (docs/SDD/11-Project-Layout.md): 7 библиотек-модулей + исполняемый таргет-скелет.
 /// Сторонние зависимости добавляются только после записи в NOTICE.md (гейт N-10).
+/// Внешние пакеты (T-21: NOTICE-таблица): ZIPFoundation — zip read/write,
+/// SWCompression — gz/xz/bz2-read контейнеры (связаны с VFSKit, F-12).
+let dependencies: [Package.Dependency] = [
+    .package(url: "https://github.com/weichsel/ZIPFoundation", from: "0.9.19"),
+    .package(url: "https://github.com/tsolomko/SWCompression", from: "4.5.0"),
+]
+
 let modules: [(name: String, path: String)] = [
     ("DomainKit", "Packages/DomainKit"),
     ("VFSKit", "Packages/VFSKit"),
@@ -15,7 +22,7 @@ let modules: [(name: String, path: String)] = [
 
 /// Межмодульные зависимости (docs/SDD/11). Дополняются по мере реализации модулей.
 let moduleDependencyNames: [String: [String]] = [
-    "VFSKit": ["DomainKit"],   // T-03: InMemoryVFS конформит VFS из DomainKit
+    "VFSKit": ["DomainKit", "ZIPFoundation", "SWCompression"],   // T-21: ArchiveVFS (zip read — ZIPFoundation; gz/xz/bz2 — SWCompression); InMemoryVFS конформит VFS
     "EnginesKit": ["DomainKit"],   // T-07: FilterEngine оперирует DomainKit-типами (FileMask)
     "ListViewKit": ["DomainKit", "EnginesKit", "FileOpsKit"],   // T-05 UI + T-07 фильтр + T-10 ProgressWindow (слои 04)
     "ServicesKit": ["DomainKit"],   // T-08: SessionStore сериализует VFSPath (§5.1 Codable)
@@ -37,10 +44,13 @@ let libraries: [Target] = modules.map { module in
 let testTargets: [Target] = modules.map { module in
     let extra = (moduleDependencyNames[module.name] ?? []).map { Target.Dependency.byName(name: $0) }
         + (testDependencyNames[module.name] ?? []).map { Target.Dependency.byName(name: $0) }
+    // T-21: golden archive containers live in the VFSKit test bundle (Fixtures/).
+    let resources: [Resource] = module.name == "VFSKit" ? [.copy("Fixtures")] : []
     return Target.testTarget(
         name: "\(module.name)Tests",
         dependencies: [.byName(name: module.name)] + extra,
-        path: "\(module.path)/Tests/\(module.name)Tests"
+        path: "\(module.path)/Tests/\(module.name)Tests",
+        resources: resources
     )
 }
 
@@ -54,5 +64,6 @@ let executable: Target = .executableTarget(
 let package = Package(
     name: "MyCommander",
     platforms: [.macOS(.v14)],
+    dependencies: dependencies,
     targets: libraries + [executable] + testTargets
 )

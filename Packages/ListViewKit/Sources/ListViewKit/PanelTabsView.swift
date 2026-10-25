@@ -54,7 +54,12 @@ public struct PanelTab {
     /// already main-actor confined.
     @MainActor
     public var title: String {
-        viewModel.path?.components.last ?? "/"
+        guard let path = viewModel.path else { return "/" }
+        // Archive interlude root (T-21): empty components + host file URL → name.
+        if path.components.isEmpty, let display = path.displayURL {
+            return display.lastPathComponent
+        }
+        return path.components.last ?? "/"
     }
 
     init(id: UUID, viewModel: PanelViewModel, isLocked: Bool) {
@@ -252,6 +257,26 @@ public final class PanelTabList {
         viewModel.navigationGate = nil
         viewModel.onPathChanged = nil
         viewModel.watchEngine = nil   // stop watching directories of a closed tab
+    }
+
+    /// Уточнение T-21 (06 §6.1, archive interlude): swaps the view model of the
+    /// ACTIVE tab in place — id and lock survive, history starts fresh, watch is
+    /// rewired. Returns the previous view model (the ⌘↑-exit path rebinds it).
+    @discardableResult
+    public func swapActiveTabViewModel(_ newViewModel: PanelViewModel) -> PanelViewModel? {
+        guard tabs.indices.contains(activeIndex) else { return nil }
+        let previous = tabs[activeIndex]
+        unwire(previous.viewModel)
+        previous.viewModel.onContentsChanged = nil
+        previous.viewModel.onContentsDelta = nil
+        previous.viewModel.onError = nil
+        previous.viewModel.onRootExit = nil   // the interlude hook dies with the VM
+        lastRecordedPaths.removeValue(forKey: previous.id)
+        tabs[activeIndex] = PanelTab(id: previous.id, viewModel: newViewModel, isLocked: previous.isLocked)
+        newViewModel.watchEngine = watchEngine
+        wire(newViewModel)
+        onTabsChanged?()
+        return previous.viewModel
     }
 }
 
