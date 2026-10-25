@@ -51,6 +51,19 @@ public final class FileListView: NSView {
         _ wantsCopy: Bool
     ) -> Void)?
 
+    /// Access-mode badge (F-20 / T-17): nil hides the row; otherwise the App
+    /// passes a localized short label («FDA» / «SAFE …») appended to the
+    /// status line.
+    public var accessBadge: String? {
+        didSet { updateStatus() }
+    }
+
+    /// Current status line text (path · selection · filter · error · badge) —
+    /// exposed for tests and observable status assertions.
+    public var statusText: String {
+        statusLine.stringValue
+    }
+
     public init(viewModel: PanelViewModel, iconCache: ItemCache = ItemCache()) {
         self.viewModel = viewModel
         self.iconCache = iconCache
@@ -325,6 +338,10 @@ public final class FileListView: NSView {
         }
         if let errorNote {
             parts.append(String(localized: "panel.status.error \(errorNote)"))
+        }
+        // F-20 (T-17): the access mode is always visible in the status line.
+        if let accessBadge {
+            parts.append(accessBadge)
         }
         statusLine.stringValue = parts.joined(separator: "   ·   ")
     }

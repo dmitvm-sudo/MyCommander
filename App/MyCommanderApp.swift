@@ -11,6 +11,7 @@ import Foundation
 final class MyCommanderApp: NSObject, NSApplicationDelegate {
     private var coordinator: PanelsCoordinator?
     private var mainWindow: MainWindowController?
+    private var onboardingFlow: OnboardingFlow?
 
     func run() {
         let application = NSApplication.shared
@@ -25,6 +26,12 @@ final class MyCommanderApp: NSObject, NSApplicationDelegate {
         let mainWindow = MainWindowController(coordinator: coordinator)
         self.mainWindow = mainWindow
         mainWindow.window?.makeKeyAndOrderFront(nil)
+
+        // F-20 (T-17): the FDA probe rides app activation; the offer window
+        // opens only for an undecided onboarding state (max 2 runs).
+        let flow = OnboardingFlow(coordinator: coordinator)
+        self.onboardingFlow = flow
+        flow.begin()
 
         Task { await coordinator.start() }
 

@@ -155,6 +155,7 @@ zip (read+write), tar/gz/xz/bzip2 (read), 7z (read, v1.0 SHOULD). Открыти
 Первый запуск: понятная графика «зачем нужен Full Disk Access»; кнопка ведёт в System Settings → Full Disk Access; после возврата app мягко проверяет доступ (проба чтения непубличного пути) и в падении показывает режим «Safe Mode» (только granted-папки: Desktop/Documents/Downloads по TCC, ~/Library…); состояние видно в статус-строке.
 **Acceptance:** FDA granted → полный доступ без повторных промптов; denied → app fully usable на granted-путях, никаких crash; повторное предложение можно скрыть.
 **Модули:** App (Onboarding), VFSKit (AccessProbe).
+*Уточнение T-17 (v1-скоуп):* окно-предложение без графических иллюстраций (текст + 3 действия: System Settings / «Продолжить без FDA» / «Не показывать снова»); probe-обновление — на каждом `NSApplicationDidBecomeActive`; Safe Mode = бейдж в статус-строке + seed первого granted-папки при первом запуске без сессии (06 §6.10 «Контракт v1 (T-17)»); навязка — max 2 раза (§6.10), потом только бейдж.
 
 ### F-21. Настройки · MUST · M1 (базовые) · M3 (полные)
 Панель настроек SwiftUI: ключи, тема, шрифт, формат колонок, поведение copy (confirm-диалоги), редактор по умолчанию, архивы, network-профили.

@@ -49,6 +49,18 @@ final class PanelsCoordinator: NSObject {
         VFSPath.local(URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true))
     }
 
+    /// F-20 (T-17): the initial launch seeds the panels in a TCC-granted
+    /// zone under Safe Mode instead of the (possibly guarded) home root.
+    private var initialSeedPath: VFSPath {
+        let mode = AccessProbe.classify(AccessProbe.probe())
+        if case let .safe(knownZones) = mode, let zone = knownZones.first {
+            let zoneURL = URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
+                .appendingPathComponent(zone.rawValue, isDirectory: true)
+            return VFSPath.local(zoneURL)
+        }
+        return homePath
+    }
+
     override init() {
         let fileSystem = LocalVFS(at: URL(fileURLWithPath: "/"))
         self.fileSystem = fileSystem
@@ -60,9 +72,9 @@ final class PanelsCoordinator: NSObject {
         // back to one home tab per panel.
         if !restoreSession() {
             leftTabList = makeTabList()
-            leftTabList.seed(with: homePath)
+            leftTabList.seed(with: initialSeedPath)
             rightTabList = makeTabList()
-            rightTabList.seed(with: homePath)
+            rightTabList.seed(with: initialSeedPath)
         }
 
         leftPane = PanelViewController(tabList: leftTabList)
@@ -580,6 +592,25 @@ final class PanelsCoordinator: NSObject {
         guard let pane = activePane ?? leftPane else { return }
         let table = pane.listTableView
         table.window?.makeFirstResponder(table)
+    }
+
+    // MARK: Access mode (F-20 — T-17; 06 §6.10 v1)
+
+    /// The badge rides both panels' status lines; the seed re-target happens
+    /// only for a fresh session (T-17: initial launch without a session).
+    func applyAccessMode(_ mode: AccessMode, grantedZones: [AccessZone]) {
+        let badge: String?
+        switch mode {
+        case .full:
+            badge = String(localized: "access.badge.full")
+        case .safe:
+            let zoneText = grantedZones.map(\.rawValue).joined(separator: ", ")
+            badge = String(localized: "access.badge.safe \(zoneText)")
+        case .restricted:
+            badge = String(localized: "access.badge.restricted")
+        }
+        leftPane.fileListView.accessBadge = badge
+        rightPane.fileListView.accessBadge = badge
     }
 
     // MARK: Info card (F-19 — T-15; 06 §6.11 v1)

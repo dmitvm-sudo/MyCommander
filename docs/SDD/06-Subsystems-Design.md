@@ -126,6 +126,11 @@ enum ShellSession {
 - `MainWindowController`: layout (панели/терминал/командная строка/fullScreenModel), запоминает геометрию.
 - `CommandRouter`: таблица CommandID → действие; remap — KeymapStore; все команды реализуются методами coordinator-классов (тестируемость).
 - **OnboardingFlow (F-20)**: экран FDA → кнопка «Открыть System Settings» → процесс возврата (проверка по probe) → Safe Mode banner если отказано. Повторная навязка — max 2 раса, потом только банер.
+
+- **Контракт v1 (T-17 — onboarding/AccessProbe F-20):**
+- `VFSKit/AccessProbe.swift`: `AccessZone` (desktop/documents/downloads/library), `AccessReport { hasFullDiskAccess: Bool, grantedZones: [AccessZone] }`, `AccessMode { full, safe(zones: [AccessZone]), restricted }`; `classify(report)` — чистая логика (full → full, иначе safe по зонам, пусто → restricted — app не падает никогда); `probe(home:)` не-async, параметризуемый home для тестов: FDA-проба — читаемость `~/Library/Preferences/com.apple.dock.plist` (TCC-защищённый файл; чтение без FDA проваливается), зона — успешное `contentsOfDirectory` (ошибка → не granted, пустой список → granted).
+- `ServicesKit/OnboardingState.swift`: чистая модель правила «max 2 навязки» (§6.10): `shouldOfferInitial` (не hidden && presented==0), `canOfferAgain` (не hidden && presented<2), `afterPresentation()`, `hidden permanently`; персист в UserDefaults — только App ( ключи `mc.onboarding.*`).
+- App `OnboardingFlow` (non-modal окно): пояснение FDA + «Открыть System Settings» (`x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles`) + «Продолжить без Full Disk Access» + «Не показывать снова»; probe-обновление на каждом `NSApplicationDidBecomeActive` (granted → окно закрывается, mode → full). Статус: `FileListView.accessBadge: String?` (App пишет локализованную строку «FDA» / «SAFE …» — appendposed в статус-строку). Safe-первый запуск без сессии: seed панели — первая granted-зона (иначе home).
 - Menu bar: полная эквивалентность клавиш (пользователь меню видит хоткеи реального профиля).
 
 ## 6.11 Info dialog (F-19)
