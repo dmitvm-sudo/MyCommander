@@ -19,6 +19,9 @@ final class PanelsCoordinator: NSObject {
     /// Command bar (⌘L, F-17а / §6.8 v1): hosted by MainWindowController at
     /// the window bottom; the driver below parses and executes its lines.
     let commandBar = CommandBarView()
+    /// F-21 MVP (T-18): the settings store; consumers apply changes live.
+    let settingsStore = SettingsStore()
+    private var settingsWindow: SettingsWindowController?
     let keymapStore: KeymapStore
     private(set) var leftPane: PanelViewController!
     private(set) var rightPane: PanelViewController!
@@ -92,6 +95,7 @@ final class PanelsCoordinator: NSObject {
         )
         registerCommandHandlers()
         wireCommandBar()
+        wireSettingsConsumers()
     }
 
     /// F-17а wiring: the bar submits raw lines, 07 §7.2 single-focus contract
@@ -594,8 +598,39 @@ final class PanelsCoordinator: NSObject {
         table.window?.makeFirstResponder(table)
     }
 
-    // MARK: Access mode (F-20 — T-17; 06 §6.10 v1)
+    // MARK: Settings (F-21 MVP — T-18; 06 §6.9 v1)
 
+    /// Live application (§6.9 «DidUpdate»): the panel font re-applies to
+    /// both panels; delete-confirm and the editor read the store on demand.
+    private func wireSettingsConsumers() {
+        settingsStore.onDidUpdate = { [weak self] schema in
+            self?.applyPanelSetting(schema)
+        }
+        applyPanelSetting(settingsStore.settings)
+        // F-21: ⌘, opens the (reusable) settings window.
+        router.register(.openSettings) { [weak self] in
+            self?.openSettingsWindow()
+        }
+    }
+
+    private func openSettingsWindow() {
+        if let window = settingsWindow {
+            window.activate()
+        } else {
+            let controller = SettingsWindowController(store: settingsStore)
+            settingsWindow = controller
+            controller.activate()
+        }
+    }
+
+    /// NSFont construction belongs to App (ServicesKit stays AppKit-free).
+    private func applyPanelSetting(_ schema: SettingsSchema) {
+        let font = NSFont.wrappedPanelFont(from: schema)
+        leftPane?.fileListView.applyPanelFont(font)
+        rightPane?.fileListView.applyPanelFont(font)
+    }
+
+    // MARK: Access mode (F-20 — T-17; 06 §6.10 v1)
     /// The badge rides both panels' status lines; the seed re-target happens
     /// only for a fresh session (T-17: initial launch without a session).
     func applyAccessMode(_ mode: AccessMode, grantedZones: [AccessZone]) {
@@ -707,7 +742,21 @@ final class PanelsCoordinator: NSObject {
         let path = item.id
         Task {
             guard let url = await PreviewMaterializer.prepareFileURL(path: path, in: vfs) else { return }
-            NSWorkspace.shared.open(url)
+            // F-4 / F-21 MVP (§6.9 v1): a configured editor wins; an empty
+            // path or a missing/non-executable one stays on the system
+            // default app. Bundles (.app) open as-is, binaries through the
+            // same launch API.
+            let editorPath = settingsStore.settings.textEditorPath
+            if !editorPath.isEmpty,
+               editorPath.hasSuffix(".app") || FileManager.default.isExecutableFile(atPath: editorPath) {
+                try await NSWorkspace.shared.open(
+                    [url],
+                    withApplicationAt: URL(fileURLWithPath: editorPath),
+                    configuration: NSWorkspace.OpenConfiguration()
+                )
+            } else {
+                NSWorkspace.shared.open(url)
+            }
         }
     }
 
@@ -820,6 +869,16 @@ final class PanelsCoordinator: NSObject {
         guard !sources.isEmpty, let viewModel else { return }
 
         Task {
+            // F-21 / 07 §7.3: confirmation at ≥ N items (T-18 settings).
+            let schema = settingsStore.settings
+            if schema.confirmDelete, sources.count >= max(1, schema.deleteConfirmThreshold) {
+                let alert = NSAlert()
+                alert.messageText = String(localized: "settings.deletion.confirm.message \(sources.count)")
+                alert.addButton(withTitle: String(localized: "settings.deletion.confirm.ok"))
+                alert.addButton(withTitle: String(localized: "settings.deletion.confirm.cancel"))
+                alert.alertStyle = .warning
+                guard alert.runModal() == .alertFirstButtonReturn else { return }
+            }
             do {
                 let plan = try await TransferPlanner.planDelete(sources: sources, source: viewModel.source)
                 guard !plan.items.isEmpty else { return }

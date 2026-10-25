@@ -116,6 +116,30 @@ enum ShellSession {
 ## 6.9 ServicesKit
 
 - **SettingsStore**: default-мерж с user JSON; применение мгновенное (pub-всем модулям по `DidUpdate` каналу);
+- **Контракт v1 (T-18 — F-21 MVP: шрифт панели, подтверждения удаления, внешний редактор, экспорт/импорт):**
+```swift
+enum SettingsSection: String, CaseIterable { case appearance, deletion, editor }
+struct SettingsSchema: Codable, Sendable, Equatable {
+    static let schemaVersion = 1
+    var schemaVersion: Int
+    // appearance: шрифт панели (family пуст = системный; mono-flag; size 9…24, default 13)
+    var panelFontFamily: String; var panelFontSize: Double; var useMonospacedPanelFont: Bool
+    // deletion: подтверждение при счёте ≥ threshold (default 5, 07 §7.3)
+    var confirmDelete: Bool; var deleteConfirmThreshold: Int
+    // editor: F-4; пусто = системный дефолт (NSWorkspace.open)
+    var textEditorPath: String
+}
+@MainActor final class SettingsStore {
+    init(url: URL = AppSupport «settings.json»)   // user-JSON мерж поверх defaults
+    var onDidUpdate: (@MainActor (SettingsSchema) -> Void)?
+    func update(_ mutate: (inout SettingsSchema) -> Void)   // apply + persist + fire
+    func reset(_ section: SettingsSection)                  // defaults поля секции
+    func export(to: URL) throws / func import(from: URL) throws
+}
+```
+- Мерж: user JSON декодится в overridable поля (все optional) поверх defaults; schemaVersion ≠ 1 — user-файл игнорируется целиком (миграция — Migrations.swift будущая).
+- Потребители (App): шрифт → `FileListView.applyPanelFont(NSFont?)` (NSFont строится в App — ServicesKit без AppKit); threshold/confirm → `beginDeleteSelection`; textEditorPath → `editFile` (`NSWorkspace.open(_:withApplicationAt:)`); кнопки окна настроек → Save/Import через NSSavePanel/NSOpenPanel. Ключи/тема/колонки/network-профили — M3.
+
 - **KeymapStore**: профили (default TC-style / macOS-style / user), запись — `KeyCombo` (keyCode + modifiers), конфликты forbidden при сохранении;
 - **LocationsStore** (закладки/Hotlist/история per-tab; hot-Slots 9);
 - **ConnectionStore** + Keychain (kSecClassGenericPassword, service `MyCommander.connection.<id>`) — никогда не в JSON;
@@ -130,7 +154,7 @@ enum ShellSession {
 - **Контракт v1 (T-17 — onboarding/AccessProbe F-20):**
 - `VFSKit/AccessProbe.swift`: `AccessZone` (desktop/documents/downloads/library), `AccessReport { hasFullDiskAccess: Bool, grantedZones: [AccessZone] }`, `AccessMode { full, safe(zones: [AccessZone]), restricted }`; `classify(report)` — чистая логика (full → full, иначе safe по зонам, пусто → restricted — app не падает никогда); `probe(home:)` не-async, параметризуемый home для тестов: FDA-проба — читаемость `~/Library/Preferences/com.apple.dock.plist` (TCC-защищённый файл; чтение без FDA проваливается), зона — успешное `contentsOfDirectory` (ошибка → не granted, пустой список → granted).
 - `ServicesKit/OnboardingState.swift`: чистая модель правила «max 2 навязки» (§6.10): `shouldOfferInitial` (не hidden && presented==0), `canOfferAgain` (не hidden && presented<2), `afterPresentation()`, `hidden permanently`; персист в UserDefaults — только App ( ключи `mc.onboarding.*`).
-- App `OnboardingFlow` (non-modal окно): пояснение FDA + «Открыть System Settings» (`x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles`) + «Продолжить без Full Disk Access» + «Не показывать снова»; probe-обновление на каждом `NSApplicationDidBecomeActive` (granted → окно закрывается, mode → full). Статус: `FileListView.accessBadge: String?` (App пишет локализованную строку «FDA» / «SAFE …» — appendposed в статус-строку). Safe-первый запуск без сессии: seed панели — первая granted-зона (иначе home).
+- App `OnboardingFlow` (non-modal окно): пояснение FDA + «Открыть System Settings» (`x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles`) + «Продолжить без Full Disk Access» + «Не показывать снова»; probe-обновление на каждом `NSApplicationDidBecomeActive` (granted → окно закрывается, mode → full). Статус: `FileListView.accessBadge: String?` (App пишет локализованную строку «FDA» / «SAFE …» — включается в статус-строку). Safe-первый запуск без сессии: seed панели — первая granted-зона (иначе home).
 - Menu bar: полная эквивалентность клавиш (пользователь меню видит хоткеи реального профиля).
 
 ## 6.11 Info dialog (F-19)

@@ -14,7 +14,7 @@ final class NameCell: NSTableCellView {
     static let reuseIdentifier = NSUserInterfaceItemIdentifier("mc.nameCell")
 
     private let iconView = NSImageView()
-    private let textLabel = NSTextField(labelWithString: "")
+    let textLabel = NSTextField(labelWithString: "")
     private let badgeLabel = NSTextField(labelWithString: "")
 
     init() {
@@ -56,12 +56,17 @@ final class NameCell: NSTableCellView {
         if item.attributes.isReadOnly { badge = String(localized: "cell.badge.locked") }
         badgeLabel.stringValue = badge
     }
+
+    /// Settings live-apply (§6.9 v1, T-18): nil restores the default face.
+    func applyPanelFont(_ font: NSFont?) {
+        textLabel.font = font ?? NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
+    }
 }
 
 final class MetaCell: NSTableCellView {
     static let reuseIdentifier = NSUserInterfaceItemIdentifier("mc.metaCell")
 
-    private let textLabel = NSTextField(labelWithString: "")
+    let textLabel = NSTextField(labelWithString: "")
 
     init() {
         textLabel.font = NSFont.systemFont(ofSize: 11)
@@ -76,6 +81,11 @@ final class MetaCell: NSTableCellView {
             textLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -3),
             textLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
         ])
+    }
+
+    /// Settings live-apply (§6.9 v1, T-18): nil restores the default face.
+    func applyPanelFont(_ font: NSFont?) {
+        textLabel.font = font ?? NSFont.systemFont(ofSize: 11)
     }
 
     required init?(coder: NSCoder) {

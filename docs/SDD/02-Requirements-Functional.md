@@ -161,6 +161,7 @@ zip (read+write), tar/gz/xz/bzip2 (read), 7z (read, v1.0 SHOULD). Открыти
 Панель настроек SwiftUI: ключи, тема, шрифт, формат колонок, поведение copy (confirm-диалоги), редактор по умолчанию, архивы, network-профили.
 **Acceptance:** параметры применяются без рестарт; экспорт/импорт настроек (JSON); «reset section».
 **Модули:** ServicesKit, App.
+*Уточнение T-18 (v1-скоуп):* окна AppKit (не SwiftUI-панель — M3); секции: appearance (шрифт панели: mono-flag + size), deletion (confirm + threshold ≥N, 07 §7.3), editor (path, пусто = системный дефолт); применение без рестарта через `onDidUpdate`; экспорт/импорт JSON + reset section; schemaVersion = 1 заложена (06 §6.9 «Контракт v1 (T-18)»).
 
 ### F-22. Локализация EN/RU · MUST v1.0
 String Catalogs; все строки UI локализуемы; даты/числа — locale-aware.

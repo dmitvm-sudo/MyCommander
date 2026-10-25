@@ -345,6 +345,21 @@ public final class FileListView: NSView {
         }
         statusLine.stringValue = parts.joined(separator: "   ·   ")
     }
+
+    // MARK: settings live-apply (§6.9 v1, T-18)
+
+    /// Current panel font (from the settings); `nil` = module defaults.
+    private var panelFont: NSFont?
+
+    /// Panel font from the settings (F-21 MVP): nil = module defaults. The
+    /// visible rows re-render (reused cells take the new face).
+    public func applyPanelFont(_ font: NSFont?) {
+        guard panelFont != font else { return }
+        panelFont = font
+        let visibleRows = Range(tableView.rows(in: tableView.visibleRect)).map { IndexSet(integersIn: $0) } ?? IndexSet()
+        let allColumns = IndexSet(integersIn: 0 ..< max(tableView.numberOfColumns, 1))
+        tableView.reloadData(forRowIndexes: visibleRows, columnIndexes: allColumns)
+    }
 }
 
 // MARK: NSTableView plumbing
@@ -360,18 +375,21 @@ extension FileListView: NSTableViewDataSource, NSTableViewDelegate {
             let cell = tableView.makeView(withIdentifier: NameCell.reuseIdentifier, owner: self) as? NameCell
                 ?? NameCell()
             cell.render(item: item, icon: iconCache.icon(for: item))
+            cell.applyPanelFont(panelFont)
             return cell
         }
         if column.identifier == NSUserInterfaceItemIdentifier(ColumnID.size.rawValue) {
             let cell = tableView.makeView(withIdentifier: MetaCell.reuseIdentifier, owner: self) as? MetaCell
                 ?? MetaCell()
             cell.render(text: MetaCell.sizeText(of: item), alignment: .right)
+            cell.applyPanelFont(panelFont)
             return cell
         }
         if column.identifier == NSUserInterfaceItemIdentifier(ColumnID.dateModified.rawValue) {
             let cell = tableView.makeView(withIdentifier: MetaCell.reuseIdentifier, owner: self) as? MetaCell
                 ?? MetaCell()
             cell.render(text: MetaCell.modifiedText(of: item), alignment: .left)
+            cell.applyPanelFont(panelFont)
             return cell
         }
         return nil
