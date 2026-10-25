@@ -20,6 +20,7 @@
     { "command": "deselectMasked", "context": "global", "combo": { "keyCode": 78, "modifiers": [] } },
     { "command": "quickLook", "context": "global", "combo": { "keyCode": 16, "modifiers": ["command"] } },
     { "command": "focusCommandBar", "context": "global", "combo": { "keyCode": 37, "modifiers": ["command"] } },
+    { "command": "itemInfo", "context": "panelList", "combo": { "keyCode": 0, "modifiers": ["control"] } },
     { "command": "copyFiles", "context": "global", "combo": { "keyCode": 8, "modifiers": ["command"] } },
     { "command": "pasteIntoTargetPanel", "context": "global", "combo": { "keyCode": 9, "modifiers": ["command"] } },
 

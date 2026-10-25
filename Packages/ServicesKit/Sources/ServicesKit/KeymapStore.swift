@@ -53,6 +53,8 @@ public enum CommandID: String, Codable, Sendable, CaseIterable, Hashable {
     case moveRenameFiles
     case makeDirectory
     case deleteFiles
+    // Info/properties (F-19, ⌃A / ремап).
+    case itemInfo
     case openSettings
     case multiRename
     case comparePanels

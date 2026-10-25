@@ -123,3 +123,19 @@ enum ShellSession {
 - `CommandRouter`: таблица CommandID → действие; remap — KeymapStore; все команды реализуются методами coordinator-классов (тестируемость).
 - **OnboardingFlow (F-20)**: экран FDA → кнопка «Открыть System Settings» → процесс возврата (проверка по probe) → Safe Mode banner если отказано. Повторная навязка — max 2 раса, потом только банер.
 - Menu bar: полная эквивалентность клавиш (пользователь меню видит хоткеи реального профиля).
+
+## 6.11 Info dialog (F-19)
+
+- Карточка non-modal (07 §7.2 «карточка без блокировки»): одно reusable-окно, повторный вызов перезаписывает содержимое; закрытие не прерывает фоновый подсчёт (диалог обновляется, когда жив; результат отбрасывается иначе).
+- **Контракт v1 (T-15):** ListViewKit строит карточку из `VFSItem` (адаптеров не знает — слои):
+```swift
+struct InfoField: Sendable { var kind: InfoKind; var label: String; var value: String }  // label — String(localized:)
+enum InfoKind { case name, kind, size, created, modified, permissions, owner, group, tags }
+enum InfoFieldBuilder { static func fields(for item: VFSItem) -> [InfoField] }
+enum InfoBytes     { static func format(_ bytes: Int64) -> String }      // 1024-база: «0 B», «1.5 MB»
+enum InfoPermissions { static func format(_ posix: Int16) -> String }    // 0o644 → «-rw-r--r-- (644)»
+@MainActor final class InfoWindowController: NSWindowController {
+    init(item: VFSItem); func update(size: Int64); func copyToClipboard(); func activate(); func reset(to: VFSItem)
+}
+```
+- Рекурсивный размер каталога — фоново (App-драйвер): `VFS.directorySize(of:progress:)` с `ProgressSink`-счётчиком → поле size показывает «scanning…», итог через `update(size:)` (MainActor-хоп из sink-задачи). Даты — стабильный формат «YYYY-MM-DD HH:MM» (без локалевых вариаций). v1: LocalVFS/InMemory — метаданные других адаптеров идут через тот же `VFSItem`; xattr — следующая версия (не в `VFSItemAttributes`).

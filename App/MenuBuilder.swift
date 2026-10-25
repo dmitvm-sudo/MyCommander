@@ -58,6 +58,7 @@ enum MenuBuilder {
             ItemSpec(titleKey: "menu.copyFiles", command: .copyFiles),
             ItemSpec(titleKey: "menu.moveFiles", command: .moveRenameFiles),
             ItemSpec(titleKey: "menu.deleteFiles", command: .deleteFiles),
+            ItemSpec(titleKey: "menu.itemInfo", command: .itemInfo),
         ]),
     ]
 

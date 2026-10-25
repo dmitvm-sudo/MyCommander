@@ -318,6 +318,10 @@ final class PanelsCoordinator: NSObject {
         router.register(.quickLook) { [weak self] in
             self?.quickLookSelection()
         }
+        // Info card (F-19, T-15): ⌃A / remap over the cursor item.
+        router.register(.itemInfo) { [weak self] in
+            self?.openItemInfo()
+        }
     }
 
     // MARK: Command bar driver (⌘L — F-17а, T-14; 06 §6.8 v1)
@@ -501,6 +505,45 @@ final class PanelsCoordinator: NSObject {
         guard let pane = activePane ?? leftPane else { return }
         let table = pane.listTableView
         table.window?.makeFirstResponder(table)
+    }
+
+    // MARK: Info card (F-19 — T-15; 06 §6.11 v1)
+
+    /// The card window is reusable (a second ⌃A rewrites the contents).
+    private var infoWindow: InfoWindowController?
+
+    /// ⌃A: the cursor item (not the selection — NC/TC semantics of the card).
+    private func openItemInfo() {
+        guard let pane = activePane else { return }
+        let viewModel = pane.fileListView.viewModel
+        guard let item = viewModel.item(atVisibleIndex: viewModel.cursor) else { return }
+        let vfs: any VFS = viewModel.source
+
+        if let window = infoWindow {
+            window.reset(to: item)
+            window.activate()
+        } else {
+            let controller = InfoWindowController(item: item)
+            infoWindow = controller
+            controller.activate()
+        }
+
+        // Recursive directory size — фоново (F-19 acceptance): the walk never
+        // touches the UI thread, the finale replaces the «—» row afterwards.
+        if case .directory = item.kind {
+            let path = item.id
+            Task { [weak self] in
+                let sink: ProgressSink = { _ in }   // v1: renders the finale only
+                var size: Int64?
+                do {
+                    size = try await vfs.directorySize(of: path, progress: sink)
+                } catch {
+                    return
+                }
+                guard let final = size, let self else { return }
+                self.infoWindow?.update(size: final)
+            }
+        }
     }
 
     // MARK: View: Lister / editor / Quick Look (F-8, F-9 — T-13)
