@@ -523,6 +523,44 @@ _(этот слот оставлен пустым намеренно: нумер
   license-check OK; localization-check OK (281 ключей, 0 hardcoded).
 
 ### T-36. Темы довести до релиза (F-23), полиш диалогов/badges
+
+- **Скоуп (по инспекции T-36; границы v1 — 06 §6.9, скин-extension НЕ
+  входит):** (1) Реальный полиш-пойнт — бейджи ячеек (symlink/hidden/locked):
+  они красились константным `.secondaryLabelColor` один раз в init NameCell
+  и НЕ следовали токенам — под ncBlue тёмный бейдж на синем фоне. Фикс =
+  бейдж красится из `rowSecondaryText` (тот же токен, что скрытые
+  имена/мета-колонки), restore = системный `.secondaryLabelColor`.
+  (2) Стартовое применение темы ВЕРИФИЦИРОВАНО по коду без правок:
+  `PanelsCoordinator.init` создаёт панели ещё до `wireSettingsConsumers()` —
+  `applyPanelSetting(settings)` с applyTheme вызывается безусловно при
+  старте; новые табы не требуют обогащения (fileListView один на панель,
+  табы меняют VM внутри; ⌘U adoptTabList тоже реюз). (3) Диалоги: полиш по
+  осмотру проблем не нашёл — все четыре диалога имеют кнопки Return/Esc,
+  числовые поля MultiRename толерируют мусор через `Int(...) ?? дефолт`.
+
+- **Уточнение (по ходу реализации T-36):** (1) Фикс бейджей: токен веха
+  в `applyThemeColors(text:secondary:)` NameCell — под ncBlue бейдж
+  следует `rowSecondaryText`, restore = `.secondaryLabelColor`; тест-шов —
+  `badgeText`/`badgeTextColor` accessors (headless-тесты не копаются в
+  приватных полях). Новый тест `thmBadgeFollowsTheThemeToken` — 5-й в
+  `PanelThemeTests`. (2) Урок headless-тестов ячеек: `PanelViewModel`
+  СОРТИРУЕТ имя-ASC — индексы строк теста обязаны следовать сортировке
+  (a.txt → 0, h2.txt → 1, r.txt → 2), а `viewFor` в headless создаёт
+  НОВЫЕ ячейки: захваченная инстанс-переменная НЕ перерисовывается
+  `applyTheme(nil)` (нет visible-строк — `reloadVisibleRows` no-op);
+  рестор-ассерт = re-fetch через `viewFor` ПОСЛЕ applyTheme(nil).
+  (3) Урок тулчейна (уточнение §8.5): полный параллельный Debug-прогон
+  напечатал 3 «failed after» при exit=0 — квирк раннера; истина гейта =
+  СЧЁТЧИК «failed after"/"recorded an issue» (= 0) в полном прогоне +
+  зелёный изолированный ретрай сомнительных тестов (§8.5), exit-код сам
+  по себе ненадёжен (T-34-легенда «exit-код = истина» уточнена).
+  (4) Стартовое применение темы верифицировано по коду, код не троган;
+  fileListView один на панель — токены переживают табы/⌘U бесплатно.
+  (5) Гейты: build 0 warnings; Debug #1 — 3 перф-флейка (нагрузка 6.5,
+  §8.5-изолированный ретрай зелёный), Debug #2 serial — 0; Release —
+  зелёный с первой попытки (354 passed, 0 failed); license-check OK;
+  localization-check OK (281 ключей, 0 hardcoded).
+
 ### T-37. Релиз-инженерия: Sparkle, DMG+notarization, GitHub Releases, README/help, NOTICE-проверка, beta-канал
 ### T-38. Бета-цикл: сбор фидбек, краш-фиксы, замер crash-free ≥ 99.5 %
 

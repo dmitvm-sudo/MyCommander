@@ -396,6 +396,10 @@ struct SettingsSchema: Codable, Sendable, Equatable {
   (NSComboBox, editable; пустая строка = системное лицо) поверх существующего
   `NSFont.wrappedPanelFont` (§6.9 T-18) — live apply через `applyPanelFont`;
   валидация left как есть (NSFontManager отдаёт nil → дефолт-фолбэк).
+  Рядовые ячейки красят и бейджи из тех же токенов: badge-строка NameCell
+  (symlink/hidden/locked — §6.1) следует `rowSecondaryText`, restore —
+  системный `.secondaryLabelColor` (уточнение T-36; табы/⌘U реюзнут один
+  fileListView — токены переживают переключение вкладок без повторов).
   Reset(.appearance) возвращает themeRaw тоже.
 
 - **KeymapStore**: профили (default TC-style / macOS-style / user), запись — `KeyCombo` (keyCode + modifiers), конфликты forbidden при сохранении;

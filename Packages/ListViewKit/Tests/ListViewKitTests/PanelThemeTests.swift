@@ -120,3 +120,48 @@ private func thmColumn(_ identifier: String) -> NSTableColumn {
     // nil theme = system label colors.
     #expect(nameCell.textLabel.textColor == NSColor.labelColor)
 }
+
+@Test @MainActor func thmBadgeFollowsTheThemeToken() throws {
+    // T-36 polish: the symlink/hidden/locked badge rides the SAME secondary
+    // token as the hidden names — a constant dark badge is illegible on the
+    // ncBlue surface. VM sorts name-ascending: row0 = a.txt (clean),
+    // row1 = h2.txt (hidden badge), row2 = r.txt (locked badge).
+    var hidden = thmItem(name: "h2.txt")
+    hidden.attributes.isHidden = true
+    var locked = thmItem(name: "r.txt")
+    locked.attributes.isReadOnly = true
+    let view = thmView(items: [locked, thmItem(name: "a.txt"), hidden])
+    view.applyTheme(PanelTheme.ncBlueClassic)
+
+    let cleanCell = try #require(
+        view.tableView(view.listTableView, viewFor: thmColumn(ColumnID.name.rawValue), row: 0)
+            as? NameCell
+    )
+    #expect(cleanCell.badgeText.isEmpty)
+    #expect(cleanCell.badgeTextColor == PanelTheme.ncBlueClassic.rowSecondaryText)
+
+    let hiddenCell = try #require(
+        view.tableView(view.listTableView, viewFor: thmColumn(ColumnID.name.rawValue), row: 1)
+            as? NameCell
+    )
+    #expect(hiddenCell.badgeText == String(localized: "cell.badge.hidden"))
+    #expect(hiddenCell.badgeTextColor == PanelTheme.ncBlueClassic.rowSecondaryText)
+
+    let lockedCell = try #require(
+        view.tableView(view.listTableView, viewFor: thmColumn(ColumnID.name.rawValue), row: 2)
+            as? NameCell
+    )
+    #expect(lockedCell.badgeText == String(localized: "cell.badge.locked"))
+    #expect(lockedCell.badgeTextColor == PanelTheme.ncBlueClassic.rowSecondaryText)
+
+    // nil theme: fresh viewFor calls carry the system secondary color (the
+    // headless table has no visible rows — the captured instances above are
+    // not repainted by applyTheme(nil) itself).
+    view.applyTheme(nil)
+    let restored = try #require(
+        view.tableView(view.listTableView, viewFor: thmColumn(ColumnID.name.rawValue), row: 2)
+            as? NameCell
+    )
+    #expect(restored.badgeText == String(localized: "cell.badge.locked"))
+    #expect(restored.badgeTextColor == NSColor.secondaryLabelColor)
+}

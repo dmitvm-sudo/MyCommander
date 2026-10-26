@@ -70,15 +70,24 @@ final class NameCell: NSTableCellView {
         textLabel.font = font ?? NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
     }
 
-    /// Theme token apply (F-23 T-33): nil = system label colors; consulted
-    /// again on every subsequent `render`.
+    /// Theme token apply (F-23 T-33; badge polish T-36): nil = system label
+    /// colors; consulted again on every subsequent `render`. The badge tag
+    /// rides the same secondary token — a hardcoded dark badge would be
+    /// illegible on the ncBlue surface.
     func applyThemeColors(text: NSColor?, secondary: NSColor?) {
         if let text, let secondary {
             themeTexts = (text, secondary)
+            badgeLabel.textColor = secondary
         } else {
             themeTexts = nil
+            badgeLabel.textColor = .secondaryLabelColor
         }
     }
+
+    // Test seam (T-36): the headless tests assert badge content/color without
+    // digging into private storage.
+    var badgeText: String { badgeLabel.stringValue }
+    var badgeTextColor: NSColor { badgeLabel.textColor ?? .secondaryLabelColor }
 }
 
 final class MetaCell: NSTableCellView {
