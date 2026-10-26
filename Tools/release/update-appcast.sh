@@ -32,6 +32,10 @@ ARCHIVE_TARGET="${ARCHIVE_TARGET:-https://github.com/$GH_SLUG/releases/download/
 
 # EdDSA signature — two components from sign_update output:
 #   sparkle:edSignature="…"  sparkle:length="…"
+# SPARKLE_ED_KEY_FILE (optional): file with the private EdDSA key (exported
+# via `generate_keys -x`; SHRED after the release session — the keychain
+# route stays the default because sign_update blocks on a keychain-consent
+# dialog inside headless sessions otherwise, T-37/T-38 first-tag protocol).
 SIG_SIG=""; SIG_LEN=""
 SIG_TOOL="${SPARKLE_SIGN_UPDATE:-}"
 if [ -z "$SIG_TOOL" ]; then
@@ -39,7 +43,7 @@ if [ -z "$SIG_TOOL" ]; then
   [ -n "$FOUND" ] && SIG_TOOL="$FOUND"
 fi
 if [ -n "$SIG_TOOL" ] && [ -x "$SIG_TOOL" ]; then
-  OUT=$("$SIG_TOOL" "$DMG" 2>&1 || true)
+  OUT=$("$SIG_TOOL" ${SPARKLE_ED_KEY_FILE:+--ed-key-file "$SPARKLE_ED_KEY_FILE"} "$DMG" 2>&1 || true)
   SIG_SIG=$(sed -nE 's/.*sparkle:edSignature="([^"]+)".*/\1/p' <<<"$OUT")
   SIG_LEN=$(sed -nE 's/.*sparkle:length="([0-9]+)".*/\1/p' <<<"$OUT")
   if [ -z "$SIG_SIG" ]; then
