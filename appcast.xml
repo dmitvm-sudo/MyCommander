@@ -1,16 +1,27 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?><!-- sparkle-sign-warning:
-IMPORTANT: This file was signed by Sparkle. Any modifications to this file requires re-signing this file with generate_appcast or sign_update! The signed signature will be embedded at the end of this file.
---><!-- Sparkle 2 appcast (03 N-9): EdDSA-signed items; hosted at the repo root
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Sparkle 2 appcast (03 N-9): EdDSA-signed items; hosted at the repo root
      for the release feed URL (Info.plist SUFeedURL). Items are appended by
      Tools/release/update-appcast.sh at release time; a «beta» in the version
-     string puts the item on the beta channel (stable updaters ignore it). --><rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/" version="2.0">
+     string puts the item on the beta channel (stable updaters ignore it). -->
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/" version="2.0">
   <channel>
     <title>MyCommander updates</title>
     <link>https://github.com/dmitvm-sudo/MyCommander/releases</link>
     <description>MyCommander appcast (Sparkle 2 · EdDSA · 03 N-9)</description>
     <language>ru</language>
-  </channel>
-</rss><!-- sparkle-signatures:
-edSignature: 6oQS/ooG6o9RP6THHJBqkukljtIgJz78V+7BUyUx9Isatmanok4cG7HRP73Toea778n4wbFPCCx743XGpne6Aw==
-length: 983
--->
+    <item>
+      <title>Version 1.0.0</title>
+      <pubDate>Mon, 26 Oct 2026 21:55:46 -0000</pubDate>
+      <sparkle:releaseNotesLink>https://github.com/dmitvm-sudo/MyCommander/releases/tag/v1.0.0</sparkle:releaseNotesLink>
+        <enclosure
+          url="https://github.com/dmitvm-sudo/MyCommander/releases/download/v1.0.0/MyCommander-1.0.0.dmg"
+          type="application/octet-stream"
+          sparkle:shortVersionString="1.0.0"
+          sparkle:buildNumber="39"
+          size="9682144"
+          sparkle:installationType="package"
+          sparkle:edSignature="kCglXgGJ0IlYjajF+Ka5WGySIZoywS2vrtfiNMGArSEz0rNHB/kz+LjGR66sYuek27f34xdW8QS8vxL+XjApDw=="
+        />
+
+    </item>  </channel>
+</rss>
