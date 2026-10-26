@@ -601,6 +601,31 @@ _(этот слот оставлен пустым намеренно: нумер
   тесты — ниже; license-check OK (Sparkle в resolved ↔ NOTICE);
   localization-check OK (284 ключей, 0 hardcoded).
 
+- **Уточнение (протокол первого тега, T-37/T-38 релиз-деск):** (1) Владелец
+  НЕ имеет платного Apple Developer Membership → дистрибуция **ad-hoc**:
+  Developer ID-подпись и notarization НЕ применяются (notarize.sh остаётся
+  конвейеркой для будущего), README добавляет Gatekeeper-инструкцию
+  («Open Anyway» для первого запуска на чужой машине — Sparkle-апдейты
+  этот промпт НЕ требуют: URLSession-загрузки карантин не ставят, EdDSA —
+  независимая проверка целостности). (2) EdDSA-ключи Sparkle:
+  `generate_keys` — приватный в Keychain этой машины, публичный
+  `SUPublicEDKey = rKvf6834hyv0phqz1U07MD0lOfRH7kGBMpV3CWpMCVo=` попадает в
+  релизный Info.plist через `SPARKLE_EDDSA_KEY` у build-app.sh. (3)
+  **Протокол публикации** (CI-runner без EdDSA-ключа и identity — по духу
+  supply-chain): CI на теге `v*` создаёт релиз **DRAFT'ом** (подпись/ключ
+  всегда вне раннера); релиз-дес собирает app+DMG локально, ставит EdDSA-
+  подпись в appcast (`sign_update` читает Keychain), `gh release upload
+  --clobber` заменяет draft-артефакты подписанными и `gh release edit
+  --draft=false` публикует. release.yml изменён соответственно (`--draft`).
+  (4) Smoke живого апдейта (09 M3-exit п.4b; 8.4 п.10) на двух тегах:
+  v1.0.0 (stable) → v1.0.1-beta1 (sparkle:channel=beta); проверки: stable
+  кратер игнорирует beta-итем (фильтрация каналов), EdDSA-валидность,
+  состав Info.plist установленного app, HTTP-доступность appcast на
+  raw.githubusercontent. Верификация «чистая машина» на не-notarized
+  сборке замещается кодом-подписью-проверкой (`codesign --deep --strict`)
+  + инструкцией README; истинный clean-machine прогон переносится на
+  будущую Developer ID-эпоху.
+
 ### T-38. Бета-цикл: сбор фидбек, краш-фиксы, замер crash-free ≥ 99.5 %
 
 - **Скоуп (T-38; время-загейтированный процесс + каркас):** код-часть —

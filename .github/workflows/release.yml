@@ -55,12 +55,20 @@ jobs:
           APP_BUILD="${GITHUB_RUN_NUMBER}" SKIP_SIGNATURE_WARNING=1 \
             ./Tools/release/update-appcast.sh "build/release/MyCommander-$MYCOMMANDER_VERSION.dmg"
 
-      - name: Publish the GitHub Release
+      - name: Publish the (draft) GitHub Release
+        # T-37/T-38 first-tag protocol: the CI runner holds no EdDSA key and
+        # no Developer ID identity by design (supply chain) — its artifacts
+        # are UNSIGNED, so they land as a DRAFT. The release desk builds +
+        # signs locally (Tools/release/build-app.sh + sign_update) and
+        # publishes: `gh release upload --clobber` the signed DMG/appcast,
+        # then `gh release edit <tag> --draft=false`.
         run: |
           gh release create "${{ github.ref_name }}" \
+            --draft \
             --title "MyCommander ${{ github.ref_name }}" \
             --generate-notes \
             "build/release/MyCommander-$MYCOMMANDER_VERSION.dmg" \
             appcast.xml
         env:
           GH_TOKEN: ${{ github.token }}
+        if: ${{ success() }}

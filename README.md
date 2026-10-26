@@ -21,14 +21,17 @@ swift run MyCommander          # запуск (SPM dev-сборка: updater/л�
 
 ## Установка (релиз)
 Релизы публикуются на [GitHub Releases](https://github.com/dmitvm-sudo/MyCommander/releases):
-notarized DMG (drag MyCommander.app в Applications) + подписанный appcast для автообновлений
-(Sparkle 2, EdDSA; пользователь может отключить автопроверку в Sparkle-настройках —
-сеть не трогается до явного запроса, N-9).
-- `Tools/release/build-app.sh` — сборка `MyCommander.app` (бинарный + ресурсы + Sparkle; подпись через `SIGN_IDENTITY`);
+DMG (drag MyCommander.app в Applications) + EdDSA-подписанный appcast для автообновлений
+(Sparkle 2; автопроверку можно отключить в настройках — сеть не трогается до явного запроса, N-9).
+Сборка ad-hoc, без Apple notarization: на чужой машине первый запуск требует
+Gatekeeper-разрешения — macOS 14: правый клик по MyCommander.app → «Открыть»;
+macOS 15+: Системные настройки → Конфиденциальность и безопасность → «Всё равно открыть».
+Автообновления через Sparkle карантин не ставят и этого шага не требуют.
+- `Tools/release/build-app.sh` — сборка `MyCommander.app` (бинарный + ресурсы + Sparkle; подпись через `SIGN_IDENTITY`, EdDSA-ключ через `SPARKLE_EDDSA_KEY`);
 - `Tools/release/make-dmg.sh` — UDZO-образ;
-- `Tools/release/notarize.sh` — notarization + staple (нужны учётные данные Apple);
-- `Tools/release/update-appcast.sh` — обновление `appcast.xml` (beta-канал по `-betaN`).
-Тег `v*` запускает это всё в CI (`.github/workflows/release.yml`).
+- `Tools/release/notarize.sh` — notarization + staple (нужны учётные данные Apple Developer Program — сейчас не применяются);
+- `Tools/release/update-appcast.sh` — обновление `appcast.xml` (beta-канал по `-betaN`), EdDSA-подпись читается из Keychain;
+- протокол публикации: тег `v*` в CI создаёт DRAFT-релиз; релиз-дес собирает и подписывает локально, затем `gh release upload --clobber` + `gh release edit --draft=false` (ключи всегда вне CI — supply-chain).
 
 ## Структура
 - `Packages/` — модули SPM (карта и ответственность каждого файла: `docs/SDD/11-Project-Layout.md`)
