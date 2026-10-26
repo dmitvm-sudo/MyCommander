@@ -63,6 +63,7 @@ enum MenuBuilder {
             ItemSpec(titleKey: "menu.packFiles", command: .packFiles),
             ItemSpec(titleKey: "menu.multiRename", command: .multiRename),
             ItemSpec(titleKey: "menu.comparePanels", command: .comparePanels),
+            ItemSpec(titleKey: "menu.searchFiles", command: .searchFiles),
             ItemSpec(titleKey: "menu.undo", command: .undo),
             ItemSpec(titleKey: "menu.itemInfo", command: .itemInfo),
         ]),

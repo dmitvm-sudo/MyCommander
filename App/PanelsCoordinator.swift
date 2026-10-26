@@ -516,6 +516,12 @@ final class PanelsCoordinator: NSObject {
             self?.beginComparePanels()
         }
 
+        // F-16 (T-30): full-text search from the ACTIVE pane; the results
+        // open as a read-only virtual folder in that pane.
+        router.register(.searchFiles) { [weak self] in
+            self?.beginSearchFiles()
+        }
+
         // F-6 (T-20): ⌘Z — undo the newest journal record through the same
         // planner/conflicts/executor path as forward operations.
         router.register(.undo) { [weak self] in
@@ -1444,6 +1450,37 @@ final class PanelsCoordinator: NSObject {
 
             await viewModelA.reload()
             await viewModelB.reload()
+        }
+    }
+
+    /// F-16 (T-30): full-text search rooted at the ACTIVE pane's directory.
+    /// The dialog runs the engine live (instant cancel, result limit); the
+    /// accepted hits become a READ-ONLY `SearchResultVFS` virtual folder
+    /// swapped into the pane (the SFTP-connect model, T-25) — F-3 view and
+    /// F-5 copy work through origin delegation.
+    private func beginSearchFiles() {
+        guard let pane = activePane ?? leftPane else { return }
+        let viewModel = pane.fileListView.viewModel
+        guard let root = viewModel.path else { return }
+        let vfs = viewModel.source
+        let side: FocusController.PanelSide = pane === leftPane ? .left : .right
+
+        guard let hits = SearchDialog.run(source: vfs, at: root), !hits.isEmpty else { return }
+        let resultVFS = SearchResultVFS(hits: hits.map { SearchResultVFS.Hit(item: $0.item, origin: vfs) })
+
+        Task { [weak self] in
+            await self?.archiveRegistry.register(resultVFS)
+            guard let self, let pane = self.activePane ?? self.leftPane else { return }
+            guard let host = pane.tabList.activeTab?.viewModel else { return }
+            let resultModel = PanelViewModel(source: resultVFS)
+            self.wireArchiveEnter(resultModel, side: side)
+            resultModel.onRootExit = { [weak pane, weak host, weak resultModel] in
+                guard let pane, let host, let resultModel else { return }
+                guard pane.fileListView.viewModel === resultModel else { return }
+                _ = pane.swapActiveTabViewModel(host)
+            }
+            try await resultModel.openDirectory(at: VFSPath(root: resultVFS.id))
+            pane.swapActiveTabViewModel(resultModel)
         }
     }
 

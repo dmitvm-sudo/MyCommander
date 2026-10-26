@@ -8,6 +8,9 @@
 /// Источник данных. Стабильный ID одного открытого «диска» (том, архив, SFTP-сессия…).
 struct VFSInstanceID: Hashable, Codable, Sendable {
     var kind: VFSKind          // .localDisk / .archive / .sftp / (.smb, .s3 — v1.x)
+                               // .searchResults — виртуальная папка результатов
+                               // поиска (уточнение T-30; read-only, делегирует
+                               // чтение в VFS-источник каждого hit'а)
     var credentialRef: UUID?   // для Connections (Keychain-привязка)
     var specID: String         // локальный: volume UUID; архив: file identity; sftp: connection id
 }

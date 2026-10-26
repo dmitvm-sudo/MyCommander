@@ -11,6 +11,9 @@ public enum VFSKind: String, Codable, Sendable, CaseIterable {
     case sftp
     case smb   // v1.x
     case s3    // v1.x
+    /// T-30 (F-16): read-only virtual folder of search results; reads are
+    /// delegated to each hit's origin VFS (docs/SDD/05 §5.1 уточнение T-30).
+    case searchResults
 }
 
 /// Stable identifier of one open "disk" (volume, archive, SFTP session, ...).

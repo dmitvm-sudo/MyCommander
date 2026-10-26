@@ -173,6 +173,41 @@ cancellation на границах чанков — `SftpByteStream.readChunk`/
 
 - **FilterEngine** (quick filter F-10): подстрока/fuzzy (скорл-Damerau-подобная, но простая prefix-matching по умолчанию substring), обработка ≤ 50 мс на 50k (по Int-index, без создания строк повторно; мемоизация префикса ввода).
 - **SearchEngine** (F-16): первый проход — Spotlight-first: `NSMetadataQuery` (если том индексируем): predicate по маске/дате/размеру; content-search: streaming read → bytescan (строчно, по 8 MB), ограничение размера файла (настройка), отмена мгновенная. Результат — виртуальный `SearchResultVFS` (реестр результатов + фильтр-пересборка снимка любого набора).
+
+  *Уточнение T-30 (F-16 v1):* **SearchQuery** — `nameMask: FileMask?`,
+  `content: String` (пусто = только по имени), `contentIsRegex: Bool`,
+  `caseSensitive: Bool`, `minSize/maxSize: Int64?`,
+  `modifiedAfter/modifiedBefore: Date?`, `maxFileSize: Int64` (лимит content-
+  скана одного файла, настройка; больше — только name-совпадение),
+  `resultLimit: Int` (лимит результатов; достигнут → поиск останавливается,
+  результат помечается `truncated: true`). **SearchHit** = `item: VFSItem` +
+  `contentMatches: Int?` (nil = совпал только именем/фильтрами).
+  **SearchEngine.search(in:at:query:progress:) async throws ->
+  SearchResult** (`hits` + `truncated`): обычный путь — рекурсивный обход
+  (`listDirectory` вниз, обход обеих «ветвей» через task-cancellation — отмена
+  мгновенная, checked per-directory и per-chunk); фильтры имён/размера/дат —
+  до content-скана; content — `ByteScan` (окна 8 MB, строчно: литеральная
+  подстрока с опцией регистра или `NSRegularExpression` по декодированной
+  строке окна, частичная последняя строка переносится в следующее окно).
+  **Spotlight-first** (`NSMetadataQueryBridge`, EnginesKit): при наличии
+  name/date/size фильтров строится `NSPredicate` (kMDItemFSName LIKE,
+  kMDItemFSSize, kMDItemFSContentChangeDate); кандидаты ревалидируются теми
+  же проверками (маска/размер/дата + content) — результат идентичен обходу;
+  ноль кандидатов/ошибка запроса → fallback на рекурсивный обход
+  (корректность важнее скорости). Seam: протокол `SpotlightSearchable`
+  (EnginesKit: `url(for:)`), конформанс `LocalVFS: @retroactive` — в App
+  (обратное ребро VFSKit→EnginesKit запрещено слоями 04). Каталоги
+  content-скану не подлежат.
+  **SearchResultVFS** (VFSKit, `VFSKind.searchResults`): иммутабельный снимок
+  hits; `listDirectory` возвращает их одним «каталогом» (id компонента =
+  [index, name] — имена могут дублироваться), `openRead`/`metadata`
+  ДЕЛЕГИРУЮТ в VFS-источник hit'а (F-3 просмотр и F-5 копирование из
+  результатов работают через дефолтный `copyContents`), запись/удаление/
+  переименование → `vfsUnsupported` (read-only). «Отправить в панель» = новый
+  `PanelViewModel(source:)` + swap (модель SFTP-подключения, T-25). Диалог
+  `ListViewKit/SearchDialog.swift`: маска/содержимое/regex/регистр/размер/
+  даты/лимит, прогресс и отмена (⌘.) во время поиска, таблица результатов,
+  кнопка «в панель». Команда `CommandID.searchFiles` — ⌘F (07 карта).
 - **RenamePlanner** (F-14): вход — блок правил (маска-шаблон `[N]`, `[C]`, `[E]`, counter start/step/pad, replace/regex, регистр), выход — таблица old→new + conflicts (дубликаты новых имён, существующие целя); commit — batch через OperationExecutor (sort для стабильности).
 
   *Уточнение T-28 (F-14 v1):* **RenameRule** — `template: String` с токенами

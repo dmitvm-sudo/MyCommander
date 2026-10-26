@@ -651,6 +651,16 @@
           "command"
         ]
       }
+    },
+    {
+      "command": "searchFiles",
+      "context": "panelList",
+      "combo": {
+        "keyCode": 3,
+        "modifiers": [
+          "command"
+        ]
+      }
     }
   ]
 }

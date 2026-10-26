@@ -284,6 +284,40 @@ _(этот слот оставлен пустым намеренно: нумер
   (5) Гейты: build 0 warnings; Debug ×2 + Release — 313 зелёных;
   license-check OK.
 ### T-30. SearchEngine + результаты-виртуальная папка (F-16)
+- **Готово:** ByteScan (content-скан), SearchEngine (фильтры + limiter + отмена), NSMetadataQueryBridge (Spotlight-first), SearchResultVFS (виртуальная папка), SearchDialog, команда ⌘F; «в панель».
+- **Уточнение (по ходу реализации T-30):** (1) SDD раньше кода: `05` §5.1 —
+  `VFSKind` + `searchResults`; `06` §6.6 уточнение T-30 — SearchQuery
+  (nameMask/содержимое lit/regex/регистр/мин-макс размер/даты/maxFileSize
+  [лимит content-скана; больше — только name]/resultLimit), SearchHit
+  (contentMatches nil = только имя), обычный путь = рекурсивный обход с
+  мгновенной отменой (/per-directory, /per-chunk); **Spotlight-first** —
+  predicate (kMDItemFSName LIKE/kMDItemFSSize/kMDItemFSContentChangeDate),
+  кандидаты ревалидируются теми же проверками; ноль кандидатов/ошибка →
+  fallback обхода (корректность важнее скорости); ByteScan — СТРОЧНО по окнам
+  8 MB (литеральный needle или NSRegularExpression; частичная последняя строка
+  переносится в следующее окно — не рвёт совпадения); SearchResultVFS —
+  read-only: listDirectory сплющивает hits в ОДИН каталог (id = [index, name] —
+  имена дублируются), openRead/metadata ДЕЛЕГИРУЮТ в VFS-источник (F-3/F-5
+  работают через дефолтный copyContents), запись/удаление → vfsUnsupported;
+  «отправить в панель» = PanelViewModel + swap (модель T-25). (2) КЛЮЧЕВАЯ
+  находка слоёв: LocalVFS в VFSKit, а VFSKit не зависит от EnginesKit в проде
+  (обратное ребро запрещено 04) → seam-протокол `SpotlightSearchable`
+  (EnginesKit: `url(for:)`), конформанс `extension LocalVFS: SpotlightSearchable {}`
+  в App (`App/SpotlightSeam.swift`); ТОТ ЖЕ package → `@retroactive` НЕ нужен
+  (с ним Swift даёт ошибку «attribute does not apply; declared in the same
+  package»). (3) Код: `EnginesKit/ByteScan.swift` (+SearchEngine.swift,
+  NSMetadataQueryBridge.swift), `VFSKit/SearchResultVFS.swift`,
+  `ListViewKit/SearchDialog.swift` (live-hits от detached-таски, отмена
+  мгновенная, «В панель»), App `beginSearchFiles` (SearchResultVFS +
+  swapActiveTabViewModel), MenuBuilder `menu.searchFiles`, keymap ⌘F (обе
+  профили; конфликт-скан чист 66/68). (4) Уроки: NSMetadataQuery НЕ Sendable →
+  изоляция в `@unchecked Sendable` State-box (NSLock) внутри
+  withCheckedContinuation; свитч по кортежам опционалов — `(.some, .none)` —
+  из урока T-29 применился снова; двигательная семантика: size-фильтр = только
+  файлы (каталог приходит при size-фильтре → сомнительно), каталог + непустой
+  content = НЕ хит; в тестах размеры строк считать по байтам точно
+  («beta payload» = 12). (5) Гейты: build 0 warnings; Debug ×2 + Release —
+  328 зелёных; license-check OK.
 ### T-31. TerminalPane встроенный (F-17): SwiftTerm, ⌃`, auto-cd, вставка путей
 ### T-32. Настройки полные + custom columns + thumbnails (F-21, F-4)
 ### T-33. Темы (F-23 частично): light/dark/NC-blue, шрифты
