@@ -25,21 +25,25 @@ final class MultiRenameDialogController: NSObject, NSTableViewDataSource, NSTabl
     private let occupiedNames: Set<String>
 
     // Rule fields.
-    private let templateField = NSTextField(string: "[N]")
-    private let findField = NSTextField()
-    private let replacementField = NSTextField()
-    private let regexCheck = NSButton(checkboxWithTitle: String(localized: "rename.regex"), target: nil, action: nil)
-    private let casePopup = NSPopUpButton()
-    private let extensionPopup = NSPopUpButton()
-    private let extensionField = NSTextField()
-    private let startField = NSTextField(string: "1")
-    private let stepField = NSTextField(string: "1")
-    private let padField = NSTextField(string: "0")
+    //
+    // Internal (T-34): the headless tests drive these directly — the dialog
+    // is UI glue over the pure planner, exposing its controls is the test
+    // seam (the smoke 8.4 п.8 visual part stays manual).
+    let templateField = NSTextField(string: "[N]")
+    let findField = NSTextField()
+    let replacementField = NSTextField()
+    let regexCheck = NSButton(checkboxWithTitle: String(localized: "rename.regex"), target: nil, action: nil)
+    let casePopup = NSPopUpButton()
+    let extensionPopup = NSPopUpButton()
+    let extensionField = NSTextField()
+    let startField = NSTextField(string: "1")
+    let stepField = NSTextField(string: "1")
+    let padField = NSTextField(string: "0")
 
     // Preview.
-    private let table = NSTableView()
-    private var plan = RenamePlan(pairs: [], conflicts: [])
-    private let applyButton = NSButton(title: String(localized: "rename.apply"), target: nil, action: nil)
+    let table = NSTableView()
+    var plan = RenamePlan(pairs: [], conflicts: [])
+    let applyButton = NSButton(title: String(localized: "rename.apply"), target: nil, action: nil)
     var applyResult: TransferPlan?
     private var modalContinuation: CheckedContinuation<Void, Never>?
 
@@ -204,13 +208,13 @@ final class MultiRenameDialogController: NSObject, NSTableViewDataSource, NSTabl
 
     // MARK: buttons
 
-    @objc private func applyClicked() {
+    @objc func applyClicked() {
         guard plan.isValid, !plan.pairs.isEmpty, let parent = plan.pairs.first?.item.id.parent else { return }
         applyResult = RenamePlanner.buildTransferPlan(pairs: plan.pairs, in: parent)
         resumeCaller()
     }
 
-    @objc private func cancelClicked() {
+    @objc func cancelClicked() {
         applyResult = nil
         resumeCaller()
     }

@@ -48,7 +48,7 @@
 
 | ADR | Решение | Обоснование |
 |---|---|---|
-| ADR-1 | Swift 6, современный Xcode SDK, deployment target macOS 14+ (Sonoma); AppKit для панелей, SwiftUI для настроек/диалогов | Нативность и производительность; AppKit-путь доказан Nimble Commander/ForkLift |
+| ADR-1 | Swift 6, современный Xcode SDK, deployment target macOS 14+ (Sonoma); AppKit для панелей, настроек и диалогов | Нативность и производительность; AppKit-путь доказан Nimble Commander/ForkLift; SwiftUI к M3 отсеян (T-18/T-32: headless-тестируемость и настраиваемая таблица — только AppKit) |
 | ADR-2 | Не-sandboxed приложение, direct-дистрибуция (notarization + Sparkle 2), FDA через onboarding; обязательна работа и без FDA | Sandbox не даёт Full Disk Access; Apple в окт. 2026 ужесточает FDA — graceful degradation обязательна |
 | ADR-3 | Модульная SPM-структура (DomainKit/VFSKit/FileOpsKit/EnginesKit/ListViewKit/TerminalKit/ServicesKit) + App-таргет; DI конструкторами | Читаемость для AI-агентов, изоляция, тестируемость |
 | ADR-4 | Архивы как VFS-адаптеры: SWCompression + ZIPFoundation | Активные проверенные Swift-библиотеки, без C-мостов на старте |
@@ -56,6 +56,13 @@
 | ADR-6 | **GPL-3.0-or-later**, исходники открыты | Подтверждено владельцем; все зависимости пермиссивные (GPL-совместимы) |
 | ADR-7 | Встроенный terminal — SwiftTerm (PTY), MIT | Зрелая Swift-библиотека эмулятора терминала |
 | ADR-8 | Плагины v1.x: нативный Swift-протокол-контракт; полноценный сторонний SDK — после v1.0 | Прямой перенос WCX/WFX (DLL) невозможен; свой контракт проще и безопаснее |
+
+*Сверка догмы на M3-exit (T-34):* строка ADR-1 уточнена — прежняя формулировка «SwiftUI для
+настроек/диалогов» не соответствует факту: M3 комитится на чистом AppKit (T-18 SettingsWindow,
+T-32/33 LV-настройки/темы — NSWindow/NSStackView); догма «AppKit для всех UI» становится
+составом ADR-1, пересмотра до релиза не требуется. ADR-2 подтверждена частично (термин
+«Sparkle 2» реализуется на T-37); ADR-4 подтверждена реализацией (T-13 SWCompression +
+ZIPFoundation в ArchiveVFS); ADR-7 — SwiftTerm (T-31); ADR-5/8 остаются v1.x-плоскостью.
 
 ## 1.7 Соглашения документа
 

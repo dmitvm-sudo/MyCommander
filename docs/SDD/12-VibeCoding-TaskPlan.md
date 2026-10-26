@@ -450,6 +450,36 @@ _(этот слот оставлен пустым намеренно: нумер
 
 ### T-34. M3 hardening: smoke 8.4 п.8–9; перф-регрессии; ADR-догма обновлений.
 
+- **Уточнение (по ходу реализации T-34):** (1) smoke 8.4 п.8 легировано
+  автоматикой (уточнение вписано в `08` §8.4): quick filter = FilterEngine
+  + PanelViewModelFilterSelection, quick search = SearchEngine +
+  SearchResultVFS, multi-rename = RenamePlanner + **новый
+  `MultiRenameDialogTests` ×4** (preview 100 имён; конфликт-фикстура
+  «doc_N.txt» → Apply disabled и ровно 5 красных строк «new»-колонки;
+  baseline «[N]» без смен → Apply disabled; dry-run apply → `.move`-план
+  без записи) + multiRenameThroughUnifiedQueue; ручной остаток п.8 —
+  глазная Москва-проверка панелей, п.9 — vim/tmux и подтверждение закрытия
+  окна с активной задачей (прецедент T-27/T-31). (2) Тест-шов диалога:
+  rule-поля MultiRenameDialogController widened private→internal (+
+  applyClicked/cancelClicked) — диалог = UI-клей над чистым планнером;
+  headless вызов applyClicked/cancelClicked безопасен вне модальной петли
+  (NSApp.stopModal() — no-op). (3) Урок планнера: template без [E] всё
+  равно сохраняет оригинальное расширение (.keep) — «doc_[C]» даёт
+  «doc_1.txt»: конфликт-фикстура обязана занимать имена С суффиксом
+  (задвоенный первый прогон тестов поймал, поправлено). (4) ADR-дрейф:
+  строка ADR-1 в `01` §1.6 уточнена («AppKit для панелей, настроек и
+  диалогов»; SwiftUI отсеян к M3 по опыту T-18/T-32: headless-тестируемость
+  и настраиваемая таблица) + M3-сверка догмы под таблицей (ADR-2
+  Sparkle=T-37, ADR-4/7 подтверждены реализацией, ADR-5/8 — v1.x). (5)
+  Урок тулчейна: под load ≥ 6 хвостовые сводки «Test run with N…» в
+  redirect-логах затираются (кластер ~3.956 MB — PTY-буфер харнеса);
+  истина гейта = exit-код прогона + `--list-tests` (маленький вывод:
+  **359 строк = 355+4**) + счётчик «recorded an issue»=0. Ретрай-политика
+  §8.5 (новое уточнение в SDD) не понадобилась: все прогоны зелёные с
+  первой попытки. (6) Гейты: build 0 warnings; Debug ×3 (parallel ×2 +
+  serial --no-parallel) exit=0; Release exit=0 (0 failed/issue);
+  license-check OK (новых dep нет).
+
 ## v1.0
 ### T-35. Локализация EN/RU (F-22, String Catalogs, lint-правило)
 ### T-36. Темы довести до релиза (F-23), полиш диалогов/badges

@@ -61,6 +61,16 @@ reconnect после разрыва сети = `SftpRobustnessTests.liveCablePul
 симуляция обрыва через TCP-прокси. Ручной остаток п.7: реальный внешний сервер +
 «потушить Wi-Fi» (нельзя автоматизировать честно в CI).
 
+*Уточнение T-34 (автоматизируемое ядро п.8–9):* п.8 — quick filter = `FilterEngineTests`
++ `PanelViewModelFilterSelectionTests`; quick search = `SearchEngineTests` (VFSFlatScan)
++ `SearchResultVFSTests`; multi-rename = `RenamePlannerTests` (планнер, T-28) +
+`MultiRenameDialogTests` (T-34: preview 100 имён; чужие конфликты → Apply disabled
+и красные строки «new»-колонки; dry-run apply → `.move`-план без записи на диск) +
+`multiRenameThroughUnifiedQueue` (commit через единый queue). Ручной остаток п.8 — глазная
+Москва-проверка панелей. п.9 — cd-след = `TerminalPathSeederTests` (T-31); ручной остаток:
+vim/tmux в терминале и подтверждение при закрытии окна с активной задачей (прецедент
+T-27/T-31: нельзя честно автоматизировать).
+
 ## 8.5 Performance-бюджеты в CI (fail build при регрессе)
 
 | Метрика | Бюджет | Фиксчура |
@@ -73,3 +83,12 @@ reconnect после разрыва сети = `SftpRobustnessTests.liveCablePul
 | launch to first panel | ≤ 1.5 с | временный профайл |
 
 *Уточнение T-19 (CI-гейт v1):* в CI отдельная job прогоняет весь suite в Release (fail-on-regression, N-1); Debug-прогон уже несёт budget-ассерты. Автоматизировано (где живёт): catalog open 10k — LocalVFS leg (VFSKit, in-test ≤ 1.2 с = CI-запас ×4 от честного 300 мс регистра; дифф-leg покрыт T-06 `DiffUpdateTests`); quick filter 50k ≤ 50 мс (F-10, T-07); дифф 100 changed на 50k ≤ 100 мс (T-06); scroll-sweep 5k×3 кол + структура (T-05); lister open 4 GB sparse + первое окно 8 MB (FileOpsKit, in-test ≤ 1.0 с = CI-запас ×5 от 200 мс). Memory-профили N-2: footprint panel-данных 100k строк ≤ +100 MB (ListViewKit) и Lister-окна по 4 GB sparse → delta ≤ 64 MB (стрим без буферизации, FileOpsKit). Не автоматизируем в CI: copy throughput 2 GB ≥ 90 % `cp -R` и launch to first panel ≤ 1.5 с — фиксчуры рантайм-тяжёлые/аппаратно-зависимые, их регистр = smoke 8.4 п.1/3 вручную.
+
+*Уточнение T-34 (ретрай-цикл перф-гейтов при внешней нагрузке):* бюджетные тесты
+T-05/T-06/T-07 ассертят одиночную пробу из таблицы §8.5 и флейкят, когда машина под ВНЕШНЕЙ
+нагрузкой (load average ≥ 6 от посторонних процессов: WebContent/BTLEServer/Safari —
+замечено в T-06/T-07, гейт T-33 закрыт третьей попыткой). Политика локального гейта: если
+в `swift test` упали ТОЛЬКО перф-ассерты, прогон считается флейком → ретрай-цикл целых
+прогонов (до 5 попыток, пауза 75–90 с); зелёный прогон гейт закрывает, число попыток
+фиксируется в уроке задачи. Функциональные падения никогда не ретраятся. CI Release-job
+(T-19) не ретраит — ранер не несёт посторонней нагрузки.
