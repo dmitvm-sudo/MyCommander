@@ -38,5 +38,19 @@
           sparkle:edSignature="ps2d3g1S5cKEWNc15S1Uv1FoTooHHPpX1/S8g4di8+fsLGIDIi+uctYIpSrYXk/atRwU17NKYbRBnTxcN/8RAQ=="
         />
 
+    </item>    <item>
+      <title>Version 1.0.1</title>
+      <pubDate>Mon, 26 Oct 2026 22:53:00 -0000</pubDate>
+      <sparkle:releaseNotesLink>https://github.com/dmitvm-sudo/MyCommander/releases/tag/v1.0.1</sparkle:releaseNotesLink>
+        <enclosure
+          url="https://github.com/dmitvm-sudo/MyCommander/releases/download/v1.0.1/MyCommander-1.0.1.dmg"
+          type="application/octet-stream"
+          sparkle:shortVersionString="1.0.1"
+          sparkle:buildNumber="42"
+          size="9682130"
+          sparkle:installationType="package"
+          sparkle:edSignature="h0x0CHnU0AzR6p4VoWopaTFZJTS42aZ4YXewpNmNxbKgQnSeZmynbWQr5EEtZ4xDISlmdfLyPXPI1cdHSt5JAQ=="
+        />
+
     </item>  </channel>
 </rss>
