@@ -23,6 +23,8 @@ enum PanelKeyCommand: Equatable {
     case escape
     case viewFull
     case viewBrief
+    case viewColumns
+    case viewThumbnails
     /// Not a panel command — falls through to AppKit (arrows, copy, ...).
     case passToSuper
 }
@@ -73,11 +75,14 @@ enum PanelKeys {
             break
         }
 
-        // ⌃1/⌃2 — view mode (F-4 acceptance: remap keys arrive with T-09).
+        // ⌃1..⌃4 — view modes (F-4 acceptance: remap keys arrive with T-09;
+        // T-32 adds ⌃3 columns and ⌃4 thumbnails).
         if modifiers == .control, let characters {
             switch characters {
             case "1": return .viewFull
             case "2": return .viewBrief
+            case "3": return .viewColumns
+            case "4": return .viewThumbnails
             default: break
             }
         }

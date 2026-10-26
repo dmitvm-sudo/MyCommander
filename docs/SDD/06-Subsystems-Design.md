@@ -23,6 +23,8 @@
 
 *Уточнение T-21 (архив-интерлюдия, F-12):* `PanelViewModel` получает два `@MainActor`-hook'а, ставимые App в фабрике вкладок: `openEntryHandler: (VFSItem) async -> Bool` (consume-контракт: true — entry открыт обработчиком VM-навигации; false/nil — прежний no-op для file/special) и `onRootExit: () async -> Void` (goUp-at-root; локальные панели без него ведут себя как прежде). `PanelTabList` получает `swapActiveTabViewModel(_ newViewModel:) -> PanelViewModel?` — swap в активной вкладке: unwire старого VM (callback+watch), wire нового, id/lock сохраняются; возврат — тем же API (watch/callbacks прицепляются заново).
 
+*Уточнение T-32 (режимы отображения F-4 v1):* `PanelViewModel.ViewMode` — 4 кейса: **full** (⌃1, фиксированный набор name+size+dateModified), **brief** (⌃2, только имена), **columns** (⌃3, full-таблица с настроенным набором+порядком колонок из settings), **thumbnails** (⌃4, name+thumbnail-колонка, высота строки 56). Переключение локальное: клавиши входят в keymap (‡07), классификатор PanelKeys отдаёт `.viewFull/.viewBrief/.viewColumns/.viewThumbnails`, команда применима КО любой панели (`CommandRouter`). Колонки pre-built и attach/detach-аются (`applyColumnPreset([ColumnID])` — live из SettingsStore.onDidUpdate); `name` всегда первая (контракт §5.9). Данные колонок из `VFSItem.attributes` (data контракт уже полон — §5.1): size/dateCreated/dateModified (форматирование MetaCell), permissions (posix-октал), owner, tags (join «, »), kind (`NSWorkspace.localizedDescription`). **Thumbnails** — `ThumbnailStore` в LV: QLThumbnailGenerator.generateBestRepresentation асинхронно на VISIBLE строках (lazy, cell-request → cache → reload строки по готовности с identity/mode-guard), NSCache ≤ 1000 (path-key), источник URL = `item.id.displayURL` (LocalVFS-списки несут → иконка fallback для остальных/VFS). Блокировок UI нет (генерация в фоне; acceptance «≥ 1000 медиа-файлов»).
+
 ## 6.2 Движок операций (FileOpsKit)
 
 **Трехслойность:**
@@ -354,6 +356,24 @@ struct SettingsSchema: Codable, Sendable, Equatable {
 ```
 - Мерж: user JSON декодится в overridable поля (все optional) поверх defaults; schemaVersion ≠ 1 — user-файл игнорируется целиком (миграция — Migrations.swift будущая).
 - Потребители (App): шрифт → `FileListView.applyPanelFont(NSFont?)` (NSFont строится в App — ServicesKit без AppKit); threshold/confirm → `beginDeleteSelection`; textEditorPath → `editFile` (`NSWorkspace.open(_:withApplicationAt:)`); кнопки окна настроек → Save/Import через NSSavePanel/NSOpenPanel. Ключи/тема/колонки/network-профили — M3.
+
+  *Уточнение T-32 (F-21 «полные» v1):* секции → `appearance, deletion, editor,
+  view, archive, terminal`; schemaVersion остаётся 1 (добавления — additive:
+  новый user-JSON без новых ключей декодится дефолтами через optional-мердж).
+  Новые поля: `columns: [ColumnID]` (DomainKit-enum, порядок = отображение в
+  columns-режиме; `name` всегда первая — контракт §5.9; default
+  `[name, size, dateModified]` = редактор full-набора; рендер-набор отрезает
+  gitStatus до F-27), `filterStyle: String`
+  («substring»/«fuzzy» → EnginesKit.FilterStyle в App; невалид → substring),
+  `archiveAutoMount: Bool` (true = Enter на архиве респектирует §6.1
+  openEntryHandler; false = App-драйвер не ставит handler → архив открывается
+  VFS-ом или системным приложением), `terminalAutoCd: Bool` (06 §6.8
+  «опция off» — App-фильтр followTerminalPath). Reset — «reset section»
+  расширяется на новые секции. Скоуп-границы: **тема — T-33** (F-23);
+  **редактор keymap — v1.x** (§5.7 API готов, UI — отдельная задача);
+  **network-профили** — окно Connections (F-13), в схему настроек не входят.
+  Перформанс-поверх сканирования нет: columns-настройка подаётся через
+  существующий `onDidUpdate`, панели применяют диффом колонок.
 
 - **KeymapStore**: профили (default TC-style / macOS-style / user), запись — `KeyCombo` (keyCode + modifiers), конфликты forbidden при сохранении;
 - **LocationsStore** (закладки/Hotlist/история per-tab; hot-Slots 9);

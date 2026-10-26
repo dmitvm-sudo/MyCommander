@@ -70,6 +70,9 @@ public enum CommandID: String, Codable, Sendable, CaseIterable, Hashable {
     // Display / focus.
     case viewFull
     case viewBrief
+    // F-4 full (T-32): ⌃3 — the columns preset mode; ⌃4 — thumbnails.
+    case viewColumns
+    case viewThumbnails
     case focusLeft
     case focusRight
 

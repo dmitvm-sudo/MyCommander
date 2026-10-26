@@ -24,11 +24,16 @@ import EnginesKit
 ///   the previous one re-tests only the previous result.
 @MainActor
 public final class PanelViewModel {
-    /// Display modes (F-4 start: brief/full; custom columns and thumbnails come
-    /// later per docs/SDD/02 F-4).
+    /// Display modes (F-4: full T-32 — docs/SDD/06 §6.1 «Уточнение T-32»).
     public enum ViewMode: Sendable, Hashable {
+        /// ⌃2 — names only (maximum density).
         case brief
+        /// ⌃1 — the fixed trio name + size + dateModified.
         case full
+        /// ⌃3 — the custom-column table (order from the settings preset).
+        case columns
+        /// ⌃4 — the thumbnail column (QLThumbnailGenerator, lazy).
+        case thumbnails
     }
 
     public private(set) var path: VFSPath?

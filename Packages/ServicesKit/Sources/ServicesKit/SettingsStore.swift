@@ -1,22 +1,30 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import DomainKit
 import Foundation
 
-// Contract: docs/SDD/06 §6.9 «Контракт v1 (T-18)» — the settings store of
-// F-21 MVP: defaults merged with the user JSON file, live application through
-// `onDidUpdate` (AppKit consumers are wired in the App layer), section resets
-// and export/import. `schemaVersion` mirrors SessionSnapshot's contract:
-// a foreign version makes the user file ignored (migration comes later).
+// Contract: docs/SDD/06 §6.9 «Контракт v1 (T-18)» + «Уточнение T-32 (F-21
+// «полные» v1)» — the settings store: defaults merged with the user JSON
+// file, live application through `onDidUpdate` (AppKit consumers are wired in
+// the App layer), section resets and export/import. `schemaVersion` stays 1
+// for the T-32 additions (additive fields; a user file without the new keys
+// decodes through the optional-merge path). A foreign version makes the user
+// file ignored (migration comes later). Scope boundaries (§6.9 T-32): theme
+// → T-33 (F-23), the keymap editor → v1.x, network profiles → the Connections
+// window (F-13).
 
 /// Sections for the settings window and `reset(_:)`.
 public enum SettingsSection: String, CaseIterable, Sendable {
     case appearance
     case deletion
     case editor
+    case view
+    case archive
+    case terminal
 }
 
 /// The full persisted settings set (docs/SDD/07 §7.3: «подтверждение ≥ N»
-/// default 5; F-21 MVP: appearance/deletion/editor only).
+/// default 5).
 public struct SettingsSchema: Codable, Sendable, Equatable {
     public static let schemaVersion = 1
 
@@ -39,6 +47,29 @@ public struct SettingsSchema: Codable, Sendable, Equatable {
 
     public var textEditorPath: String
 
+    // MARK: view (F-4 full / T-32)
+
+    /// Columns of the `columns` display mode (⌃3): order = rendering order,
+    /// `name` is always the first column (§5.9). Default = the full-mode trio.
+    /// Renderable set only — `gitStatus` arrives with F-27 providers.
+    public var columns: [ColumnID]
+
+    /// F-10 configurable matching style: "substring" / "fuzzy"; anything else
+    /// decodes back to substring (App maps to EnginesKit.FilterStyle).
+    public var filterStyleRaw: String
+
+    // MARK: archive (F-12/T-21)
+
+    /// false = Enter on an archive container does not mount it as a folder —
+    /// the App driver skips the §6.1 `openEntryHandler` wiring for the VM.
+    public var archiveAutoMount: Bool
+
+    // MARK: terminal (F-17/T-31)
+
+    /// 06 §6.8 «опция off»: the shell child does not follow panel navigation
+    /// (the auto-CD feed is filtered out in the App coordinator).
+    public var terminalAutoCd: Bool
+
     public static let `default` = SettingsSchema(
         schemaVersion: schemaVersion,
         panelFontFamily: "",
@@ -46,17 +77,15 @@ public struct SettingsSchema: Codable, Sendable, Equatable {
         useMonospacedPanelFont: true,
         confirmDelete: true,
         deleteConfirmThreshold: 5,
-        textEditorPath: ""
+        textEditorPath: "",
+        columns: [.name, .size, .dateModified],
+        filterStyleRaw: "substring",
+        archiveAutoMount: true,
+        terminalAutoCd: true
     )
 
     public init() {
-        self.schemaVersion = Self.schemaVersion
-        self.panelFontFamily = ""
-        self.panelFontSize = 13
-        self.useMonospacedPanelFont = true
-        self.confirmDelete = true
-        self.deleteConfirmThreshold = 5
-        self.textEditorPath = ""
+        self = Self.default
     }
 
     public init(
@@ -66,7 +95,11 @@ public struct SettingsSchema: Codable, Sendable, Equatable {
         useMonospacedPanelFont: Bool,
         confirmDelete: Bool,
         deleteConfirmThreshold: Int,
-        textEditorPath: String
+        textEditorPath: String,
+        columns: [ColumnID],
+        filterStyleRaw: String,
+        archiveAutoMount: Bool,
+        terminalAutoCd: Bool
     ) {
         self.schemaVersion = schemaVersion
         self.panelFontFamily = panelFontFamily
@@ -75,6 +108,10 @@ public struct SettingsSchema: Codable, Sendable, Equatable {
         self.confirmDelete = confirmDelete
         self.deleteConfirmThreshold = deleteConfirmThreshold
         self.textEditorPath = textEditorPath
+        self.columns = columns
+        self.filterStyleRaw = filterStyleRaw
+        self.archiveAutoMount = archiveAutoMount
+        self.terminalAutoCd = terminalAutoCd
     }
 }
 
@@ -87,6 +124,10 @@ private struct SettingsOverrides: Codable {
     var confirmDelete: Bool?
     var deleteConfirmThreshold: Int?
     var textEditorPath: String?
+    var columns: [ColumnID]?
+    var filterStyleRaw: String?
+    var archiveAutoMount: Bool?
+    var terminalAutoCd: Bool?
 }
 
 /// File-backed settings store (Application Support «settings.json» by
@@ -132,18 +173,24 @@ public final class SettingsStore {
     /// Section reset: fills the section's fields back into defaults.
     public func reset(_ section: SettingsSection) {
         update { schema in
+            let schemaDefault = SettingsSchema.default
             switch section {
             case .appearance:
-                let appearance = SettingsSchema.default
-                schema.panelFontFamily = appearance.panelFontFamily
-                schema.panelFontSize = appearance.panelFontSize
-                schema.useMonospacedPanelFont = appearance.useMonospacedPanelFont
+                schema.panelFontFamily = schemaDefault.panelFontFamily
+                schema.panelFontSize = schemaDefault.panelFontSize
+                schema.useMonospacedPanelFont = schemaDefault.useMonospacedPanelFont
             case .deletion:
-                let deletion = SettingsSchema.default
-                schema.confirmDelete = deletion.confirmDelete
-                schema.deleteConfirmThreshold = deletion.deleteConfirmThreshold
+                schema.confirmDelete = schemaDefault.confirmDelete
+                schema.deleteConfirmThreshold = schemaDefault.deleteConfirmThreshold
             case .editor:
-                schema.textEditorPath = SettingsSchema.default.textEditorPath
+                schema.textEditorPath = schemaDefault.textEditorPath
+            case .view:
+                schema.columns = schemaDefault.columns
+                schema.filterStyleRaw = schemaDefault.filterStyleRaw
+            case .archive:
+                schema.archiveAutoMount = schemaDefault.archiveAutoMount
+            case .terminal:
+                schema.terminalAutoCd = schemaDefault.terminalAutoCd
             }
         }
     }
@@ -189,7 +236,25 @@ public final class SettingsStore {
         if let value = overrides.confirmDelete { schema.confirmDelete = value }
         if let value = overrides.deleteConfirmThreshold { schema.deleteConfirmThreshold = value }
         if let value = overrides.textEditorPath { schema.textEditorPath = value }
+        if let value = overrides.columns { schema.columns = SettingsStore.sanitizedColumns(value) }
+        if let value = overrides.filterStyleRaw { schema.filterStyleRaw = value }
+        if let value = overrides.archiveAutoMount { schema.archiveAutoMount = value }
+        if let value = overrides.terminalAutoCd { schema.terminalAutoCd = value }
         return schema
+    }
+
+    /// §5.9: `name` is always the first column; duplicates collapse; the
+    /// renderable set only (`gitStatus` awaits the F-27 provider).
+    public static func sanitizedColumns(_ values: [ColumnID]) -> [ColumnID] {
+        var seen = Set<ColumnID>()
+        var result: [ColumnID] = []
+        for value in values where !seen.contains(value) {
+            seen.insert(value)
+            result.append(value)
+        }
+        result.removeAll { $0 == .gitStatus }
+        result.removeAll { $0 == .name }
+        return [.name] + result
     }
 
     private func persist(_ schema: SettingsSchema) {

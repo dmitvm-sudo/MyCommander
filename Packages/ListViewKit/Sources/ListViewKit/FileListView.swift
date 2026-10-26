@@ -13,6 +13,9 @@ import DomainKit
 @MainActor
 public final class FileListView: NSView {
     public static let rowHeight: CGFloat = 22
+    /// Thumbnails mode (⌃4) carries a 40×40 image inside a taller row (06
+    /// §6.1 «Уточнение T-32»).
+    public static let thumbnailRowHeight: CGFloat = 56
 
     public private(set) var viewModel: PanelViewModel
     private let iconCache: ItemCache
@@ -21,10 +24,19 @@ public final class FileListView: NSView {
     private let statusLine = NSTextField(labelWithString: "")
     private var errorNote: String?
     /// Columns are pre-built once; the view mode (F-4) only attaches/detaches
-    /// the meta columns to the table.
+    /// the meta columns to the table. T-32 adds the custom-column set (⌃3) and
+    /// the thumbnail column (⌃4) — 06 §6.1 «Уточнение T-32».
     private let nameColumn = NSTableColumn(identifier: NSUserInterfaceItemIdentifier(ColumnID.name.rawValue))
     private let sizeColumn = NSTableColumn(identifier: NSUserInterfaceItemIdentifier(ColumnID.size.rawValue))
     private let modifiedColumn = NSTableColumn(identifier: NSUserInterfaceItemIdentifier(ColumnID.dateModified.rawValue))
+    private let createdColumn = NSTableColumn(identifier: NSUserInterfaceItemIdentifier(ColumnID.dateCreated.rawValue))
+    private let kindColumn = NSTableColumn(identifier: NSUserInterfaceItemIdentifier(ColumnID.kind.rawValue))
+    private let tagsColumn = NSTableColumn(identifier: NSUserInterfaceItemIdentifier(ColumnID.tags.rawValue))
+    private let permissionsColumn = NSTableColumn(identifier: NSUserInterfaceItemIdentifier(ColumnID.permissions.rawValue))
+    private let ownerColumn = NSTableColumn(identifier: NSUserInterfaceItemIdentifier(ColumnID.owner.rawValue))
+    /// The thumbnails column is NOT a `ColumnID` case — the mode itself (⌃4)
+    /// decides when it appears; the settings columns[] presets never list it.
+    private let thumbnailColumn = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("thumbnail"))
 
     /// Escalated for the owner only: first-responder routing and focus visuals.
     public var listTableView: PanelTableView {
@@ -108,6 +120,12 @@ public final class FileListView: NSView {
         nameColumn.title = String(localized: "column.name")
         sizeColumn.title = String(localized: "column.size")
         modifiedColumn.title = String(localized: "column.dateModified")
+        createdColumn.title = String(localized: "column.dateCreated")
+        kindColumn.title = String(localized: "column.kind")
+        tagsColumn.title = String(localized: "column.tags")
+        permissionsColumn.title = String(localized: "column.permissions")
+        ownerColumn.title = String(localized: "column.owner")
+        thumbnailColumn.title = String(localized: "column.thumbnails")
 
         nameColumn.width = 320
         nameColumn.minWidth = 120
@@ -119,6 +137,23 @@ public final class FileListView: NSView {
         modifiedColumn.width = 156
         modifiedColumn.minWidth = 110
         modifiedColumn.resizingMask = [.userResizingMask]
+        createdColumn.width = 156
+        createdColumn.minWidth = 110
+        createdColumn.resizingMask = [.userResizingMask]
+        kindColumn.width = 130
+        kindColumn.minWidth = 70
+        kindColumn.resizingMask = [.userResizingMask]
+        tagsColumn.width = 120
+        tagsColumn.minWidth = 60
+        tagsColumn.resizingMask = [.userResizingMask]
+        permissionsColumn.width = 70
+        permissionsColumn.minWidth = 50
+        permissionsColumn.resizingMask = [.userResizingMask]
+        ownerColumn.width = 90
+        ownerColumn.minWidth = 50
+        ownerColumn.resizingMask = [.userResizingMask]
+        thumbnailColumn.width = 56
+        thumbnailColumn.minWidth = 40
 
         tableView.addTableColumn(nameColumn)
         applyViewMode(animating: false)
@@ -139,21 +174,139 @@ public final class FileListView: NSView {
         registerForDraggedTypes(DragBridge.acceptedTypes)
     }
 
-    /// F-4 (start): full — name + size + date columns; brief — names only
-    /// (maximum density). No column rebuild costs: pre-built columns are
-    /// attached/detached.
+    // MARK: view modes (F-4 — 06 §6.1 «Уточнение T-32»)
+
+    /// The columns-mode preset (⌃3), fed live from the settings store through
+    /// `applyColumnPreset`. `name` is always the first rendered column; only
+    /// renderable `ColumnID`s survive (`gitStatus` awaits F-27 providers).
+    private var columnPreset: [ColumnID] = [.name, .size, .dateModified]
+
+    /// A change of the configured set (F-21 live apply): sanitize, remember,
+    /// and re-run the columns mode if it is active.
+    public func applyColumnPreset(_ preset: [ColumnID]) {
+        var sanitized: [ColumnID] = []
+        for column in preset where column != .gitStatus && !sanitized.contains(column) {
+            sanitized.append(column)
+        }
+        sanitized.removeAll { $0 == .name }
+        columnPreset = [.name] + sanitized
+        if viewModel.viewMode == .columns {
+            applyViewMode(animating: false)
+        }
+    }
+
+    /// Attach/detach columns per view mode — pre-built only, no rebuild
+    /// costs: a mode change is the `setDisplayedColumns` diff.
     private func applyViewMode(animating: Bool) {
-        let isFull = viewModel.viewMode == .full
-        let metaColumns = [sizeColumn, modifiedColumn]
-        if isFull {
-            for column in metaColumns where tableView.tableColumns.firstIndex(of: column) == nil {
-                tableView.addTableColumn(column)
-            }
-        } else {
-            for column in metaColumns where tableView.tableColumns.firstIndex(of: column) != nil {
-                tableView.removeTableColumn(column)
+        let identifiers: [String]
+        switch viewModel.viewMode {
+        case .brief:
+            identifiers = [ColumnID.name.rawValue]
+        case .full:
+            identifiers = [ColumnID.name.rawValue, ColumnID.size.rawValue, ColumnID.dateModified.rawValue]
+        case .columns:
+            identifiers = columnPreset.map(\.rawValue)
+        case .thumbnails:
+            identifiers = [ColumnID.name.rawValue, "thumbnail"]
+        }
+        setDisplayedColumns(identifiers)
+        let rowHeight: CGFloat = viewModel.viewMode == .thumbnails
+            ? Self.thumbnailRowHeight
+            : Self.rowHeight
+        if tableView.rowHeight != rowHeight {
+            tableView.rowHeight = rowHeight
+            tableView.noteHeightOfRows(
+                withIndexesChanged: IndexSet(integersIn: 0 ..< tableView.numberOfRows)
+            )
+        }
+        // Leaving the thumbnails mode drops the in-flight generation list so
+        // a hidden store cannot keep generating for an unseen table.
+        if viewModel.viewMode != .thumbnails {
+            thumbnailStore?.cancelPending()
+        }
+    }
+
+    /// The desired identifier order diffed against the live table: extras are
+    /// removed, missing ones attached, then the order fixed with
+    /// `moveTableColumn(_:to:)` (all columns pre-built, docs/SDD/06 §6.1).
+    private func setDisplayedColumns(_ identifiers: [String]) {
+        let live = tableView.tableColumns
+        for column in live
+        where !identifiers.contains(column.identifier.rawValue) {
+            tableView.removeTableColumn(column)
+        }
+        for identifier in identifiers
+        where tableView.tableColumns.allSatisfy({ $0.identifier.rawValue != identifier }) {
+            guard let column = column(for: identifier) else { continue }
+            tableView.addTableColumn(column)
+        }
+        for (targetIndex, identifier) in identifiers.enumerated() {
+            guard let liveColumn = tableView.tableColumns.first(where: {
+                $0.identifier.rawValue == identifier
+            }) else { continue }
+            let currentIndex = tableView.column(withIdentifier: liveColumn.identifier)
+            if currentIndex != targetIndex {
+                tableView.moveColumn(currentIndex, toColumn: targetIndex)
             }
         }
+    }
+
+    private func column(for identifier: String) -> NSTableColumn? {
+        switch identifier {
+        case ColumnID.name.rawValue: return nameColumn
+        case ColumnID.size.rawValue: return sizeColumn
+        case ColumnID.dateModified.rawValue: return modifiedColumn
+        case ColumnID.dateCreated.rawValue: return createdColumn
+        case ColumnID.kind.rawValue: return kindColumn
+        case ColumnID.tags.rawValue: return tagsColumn
+        case ColumnID.permissions.rawValue: return permissionsColumn
+        case ColumnID.owner.rawValue: return ownerColumn
+        case "thumbnail": return thumbnailColumn
+        default: return nil
+        }
+    }
+
+    // MARK: thumbnails (⌃4 — T-32)
+
+    private var thumbnailStore: ThumbnailStore?
+
+    /// The store materialises at the first thumbnails request; the callback
+    /// re-renders the matching cacheKey-holder row.
+    private func thumbnailStoreIfNeeded() -> ThumbnailStore {
+        if let thumbnailStore { return thumbnailStore }
+        let store = ThumbnailStore()
+        store.onThumbnailUpdated = { [weak self] key in
+            self?.reloadRow(forThumbnailKey: key)
+        }
+        thumbnailStore = store
+        return store
+    }
+
+    /// The async generation for `key` finished → find the visible row that
+    /// displays exactly this item (identity guard via the requested cacheKey)
+    /// and reload only its thumbnail column. Mode/identity drift (row reused
+    /// for another item, mode left) renders the update a no-op.
+    private func reloadRow(forThumbnailKey key: String) {
+        guard viewModel.viewMode == .thumbnails else { return }
+        let visibleRows = Range(tableView.rows(in: tableView.visibleRect))
+        guard let range = visibleRows else { return }
+        for row in range {
+            guard let item = viewModel.item(atVisibleIndex: row),
+                  item.id.root.kind == .localDisk,
+                  ThumbnailStore.cacheKey(for: item.id, pixelSize: thumbnailPixelSize) == key
+            else { continue }
+            if let column = tableView.tableColumns.first(where: { $0.identifier.rawValue == "thumbnail" }) {
+                tableView.reloadData(
+                    forRowIndexes: IndexSet(integer: row),
+                    columnIndexes: IndexSet(integer: tableView.column(withIdentifier: column.identifier))
+                )
+            }
+            return
+        }
+    }
+
+    private var thumbnailPixelSize: CGSize {
+        CGSize(width: 40, height: 40)
     }
 
     private func buildLayout() {
@@ -266,6 +419,12 @@ public final class FileListView: NSView {
         case .viewBrief:
             onActivated?()
             viewModel.setViewMode(.brief)
+        case .viewColumns:
+            onActivated?()
+            viewModel.setViewMode(.columns)
+        case .viewThumbnails:
+            onActivated?()
+            viewModel.setViewMode(.thumbnails)
         case .passToSuper:
             break   // unreachable: the table already filtered these out
         }
@@ -390,6 +549,49 @@ extension FileListView: NSTableViewDataSource, NSTableViewDelegate {
                 ?? MetaCell()
             cell.render(text: MetaCell.modifiedText(of: item), alignment: .left)
             cell.applyPanelFont(panelFont)
+            return cell
+        }
+        if column.identifier == NSUserInterfaceItemIdentifier(ColumnID.dateCreated.rawValue) {
+            let cell = tableView.makeView(withIdentifier: MetaCell.reuseIdentifier, owner: self) as? MetaCell
+                ?? MetaCell()
+            cell.render(text: MetaCell.createdText(of: item), alignment: .left)
+            cell.applyPanelFont(panelFont)
+            return cell
+        }
+        if column.identifier == NSUserInterfaceItemIdentifier(ColumnID.kind.rawValue) {
+            let cell = tableView.makeView(withIdentifier: MetaCell.reuseIdentifier, owner: self) as? MetaCell
+                ?? MetaCell()
+            cell.render(text: MetaCell.kindText(of: item), alignment: .left)
+            cell.applyPanelFont(panelFont)
+            return cell
+        }
+        if column.identifier == NSUserInterfaceItemIdentifier(ColumnID.tags.rawValue) {
+            let cell = tableView.makeView(withIdentifier: MetaCell.reuseIdentifier, owner: self) as? MetaCell
+                ?? MetaCell()
+            cell.render(text: MetaCell.tagsText(of: item), alignment: .left)
+            cell.applyPanelFont(panelFont)
+            return cell
+        }
+        if column.identifier == NSUserInterfaceItemIdentifier(ColumnID.permissions.rawValue) {
+            let cell = tableView.makeView(withIdentifier: MetaCell.reuseIdentifier, owner: self) as? MetaCell
+                ?? MetaCell()
+            cell.render(text: MetaCell.permissionsText(of: item), alignment: .right)
+            cell.applyPanelFont(panelFont)
+            return cell
+        }
+        if column.identifier == NSUserInterfaceItemIdentifier(ColumnID.owner.rawValue) {
+            let cell = tableView.makeView(withIdentifier: MetaCell.reuseIdentifier, owner: self) as? MetaCell
+                ?? MetaCell()
+            cell.render(text: MetaCell.ownerText(of: item), alignment: .left)
+            cell.applyPanelFont(panelFont)
+            return cell
+        }
+        if column.identifier == NSUserInterfaceItemIdentifier("thumbnail") {
+            let cell = tableView.makeView(withIdentifier: ThumbnailCell.reuseIdentifier, owner: self)
+                as? ThumbnailCell ?? ThumbnailCell()
+            let key = ThumbnailStore.cacheKey(for: item.id, pixelSize: thumbnailPixelSize)
+            let image = thumbnailStoreIfNeeded().thumbnail(for: item, pixelSize: thumbnailPixelSize)
+            cell.render(image: image, key: key)
             return cell
         }
         return nil

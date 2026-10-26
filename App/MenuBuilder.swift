@@ -41,6 +41,9 @@ enum MenuBuilder {
             ItemSpec(titleKey: "menu.swapPanels", command: .swapPanels),
             ItemSpec(titleKey: "menu.viewFull", command: .viewFull),
             ItemSpec(titleKey: "menu.viewBrief", command: .viewBrief),
+            // F-4 full (T-32): ⌃3 columns preset / ⌃4 thumbnails.
+            ItemSpec(titleKey: "menu.viewColumns", command: .viewColumns),
+            ItemSpec(titleKey: "menu.viewThumbnails", command: .viewThumbnails),
             // F-17а (T-14): ⌘L command bar focus.
             ItemSpec(titleKey: "menu.commandBar", command: .focusCommandBar),
         ]),

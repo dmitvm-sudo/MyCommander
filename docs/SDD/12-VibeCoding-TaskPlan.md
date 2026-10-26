@@ -365,8 +365,55 @@ _(этот слот оставлен пустым намеренно: нумер
   релинковками executable и tests-runner); Debug ×2 + Release — 335 зелёных
   (+7 TerminalPathSeederTests); license-check OK.
 ### T-32. Настройки полные + custom columns + thumbnails (F-21, F-4)
-### T-33. Темы (F-23 частично): light/dark/NC-blue, шрифты
-_(каждая задача: файлы из соответствующих модулей по карте `11`, критерии приёмки — из карточек фич `02`; тесты — unit + integration; пункт «Готово» = все acceptance критерии фичи.)_
+- **Готово:** SettingsSchema v1 additive-поля (`columns: [ColumnID]`,
+  `filterStyleRaw`, `archiveAutoMount`, `terminalAutoCd`) + секции
+  view/archive/terminal (reset по секциям); окно Settings — JSON-пресет
+  колонок + filterStyle-popup; LV — 4 режима (⌃1 full / ⌃2 brief / ⌃3
+  columns / ⌃4 thumbnails), custom-column рендер
+  (dateCreated/permissions-octal/owner/tags/kind через MetaCell-статики),
+  `applyColumnPreset` live из `onDidUpdate` (обе панели, name-first +
+  gitStatus-отрезание до F-27), rowHeight 22/56; ThumbnailStore
+  (QLThumbnailGenerator, lazy на видимых строках, NSCache ≤ 1000,
+  fakeGenerator — тест-плацдарм, onThumbnailUpdated → reload строки по
+  cacheKey); ThumbnailCell 40×40 в 56-строке + renderedKey-guard; App —
+  router `.viewColumns/.viewThumbnails`, фильтр-стиль живёт в каждой VM
+  вкладки (фабрика вкладок наследует из settings), openEntryAsArchive
+  guard `archiveAutoMount`, followTerminalPath guard `terminalAutoCd`;
+  LocalVFS заполняет `attributes.owner` из stat
+  (`NSFileOwnerAccountName`); keymap ×2 (+4 entries: ⌃3/⌃4 global+panelList),
+  меню View (+2), SettingsWindow (+3 секции, высота 540).
+- **Уточнение (по ходу реализации T-32):** (1) **URLResourceValues НЕ несёт
+  ownerAccountName** в этом SDK (только NSFileAttributeKey из FileManager-stat)
+  — план «free owner из values» был неверен: owner читается тем же stat, что
+  и posixPermissions (один атрибутыOfItem на элемент, как и раньше). (2)
+  **NSTableCellView владеет `imageView`/`textField`** — private-хранилище с
+  тем же именем в ячейке = «overriding property must be as accessible»; ячейка
+  хранит `thumbView`. (3) NSWorkspace `localizedDescription(forFile:)` удалён
+  из SDK (deprecation → UTType.localizedDescription) — kindText берётся из
+  UTType(filenameExtension:), папки — по ключу. (4) Reorder колонок —
+  `moveColumn(_:toColumn:)` (Int-индексы), identifiers через
+  `column(withIdentifier:)`; порядок фиксируется в 3 шага: удалить лишние →
+  добавить отсутствующие → дожать move на целевые позиции (все колонки
+  pre-built, перестройка отсутствует). (5) **thumbnail identifier = строка
+  «thumbnail»** — НЕ кейс ColumnID (settings-пресеты его не перечисляют ever);
+  appearance/disappearance решает сам режим ⌃4. (6) Мьютация item-копии в
+  тесте НЕ проходит в VM (value-типы) — сначала setItems с мутнутым экземпляром,
+  потом setViewMode + render (и не забывать сортировку: курсорная строка
+  меняется). (7) `cacheKey` — pure → `nonisolated` (@MainActor-класс делает
+  статики изолированными по умолчанию; тест вне актора падал с
+  ActorIsolatedCall). (8) ThumbnailStore fake синхронен: первый вызов
+  `thumbnail(...)` стартует и завершает генерацию ДО возвращ nil — кэш уже
+  горячий на следующем вызове; `cancelPending` чистит pending без отмены
+  Task'и — поздний completion попадает в кэш и глушится mode-guard'ом
+  слушателя; QL-pipeline (≥ 1000 медиа-файлов, неблокирующий UI) — T-34
+  ручной smoke по прецеденту T-27/T-31. (9) Скоуп-фиксы: `showThumbnails`
+  из схемы УБРАНО (⌃4 самодостаточен), «сброс» охватывает новые секции,
+  settings Store разбирает невалидный filterStyleRaw в App (substring default)
+  — хранится сырой.
+- **Гейты:** build 0 warnings; Debug + Release — 349 зелёных (+14: st*6 + clt*8
+  [SettingsStoreTests дополнения, FileListViewColumnsTests]); license-check OK
+  (новых dep нет — QuickLookThumbnailing системный).
+### T-33. Темы (F-23 частично): light/dark/NC-blue, шрифты_(каждая задача: файлы из соответствующих модулей по карте `11`, критерии приёмки — из карточек фич `02`; тесты — unit + integration; пункт «Готово» = все acceptance критерии фичи.)_
 
 ### T-34. M3 hardening: smoke 8.4 п.8–9; перф-регрессии; ADR-догма обновлений.
 

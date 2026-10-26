@@ -232,6 +232,12 @@ final class PanelsCoordinator: NSObject {
                 let viewModel = PanelViewModel(source: fileSystem)
                 viewModel.watchEngine = watcher
                 self?.wireArchiveEnter(viewModel, side: side)   // 06 §6.1 T-21: every VM
+                // T-32 (F-21): a fresh tab inherits the configured filter
+                // style (live changes ride `applyPanelSetting`).
+                if let self {
+                    let raw = self.settingsStore.settings.filterStyleRaw
+                    viewModel.filterStyle = raw == "fuzzy" ? .fuzzy : .substring
+                }
                 return viewModel
             },
             watchEngine: watcher
@@ -249,7 +255,10 @@ final class PanelsCoordinator: NSObject {
 
     /// F-12 (T-21): Enter на архиве — mount в реестре → interlude-VM поверх
     /// активной вкладки (swap; id/lock сохраняются). `false` для не-архивов.
+    /// T-32 (F-21): settings `archiveAutoMount = false` disables the auto-mount
+    /// — Enter falls back to the system-open path (06 §6.9).
     private func openEntryAsArchive(_ item: VFSItem, side: FocusController.PanelSide) async -> Bool {
+        guard settingsStore.settings.archiveAutoMount else { return false }
         guard item.id.root.kind == .localDisk, let url = item.id.displayURL else { return false }
         guard let archive = try? await archiveRegistry.mountArchive(reading: url) else { return false }
         guard let pane = side == .left ? leftPane : rightPane else { return false }
@@ -445,12 +454,19 @@ final class PanelsCoordinator: NSObject {
             self?.activePane?.tabList.cycleTab(step: -1)
         }
 
-        // Display modes (F-4 start).
+        // Display modes (F-4: full/brief T-05; columns/thumbnails T-32 —
+        // 06 §6.1 «Уточнение T-32»).
         router.register(.viewFull) { [weak self] in
             self?.activePane?.fileListView.viewModel.setViewMode(.full)
         }
         router.register(.viewBrief) { [weak self] in
             self?.activePane?.fileListView.viewModel.setViewMode(.brief)
+        }
+        router.register(.viewColumns) { [weak self] in
+            self?.activePane?.fileListView.viewModel.setViewMode(.columns)
+        }
+        router.register(.viewThumbnails) { [weak self] in
+            self?.activePane?.fileListView.viewModel.setViewMode(.thumbnails)
         }
 
         // Selection (F-3). The mask commands open a mask prompt (T-07 note:
@@ -964,6 +980,22 @@ final class PanelsCoordinator: NSObject {
         let font = NSFont.wrappedPanelFont(from: schema)
         leftPane?.fileListView.applyPanelFont(font)
         rightPane?.fileListView.applyPanelFont(font)
+        // T-32 (F-21/F-4): the columns preset feeds BOTH panels live; filter
+        // style rides into every tab view model (each tab keeps its own VM).
+        for pane in [leftPane, rightPane] {
+            guard let pane else { continue }
+            pane.fileListView.applyColumnPreset(schema.columns)
+        }
+        let style: EnginesKit.FilterStyle = switch schema.filterStyleRaw {
+        case "fuzzy": .fuzzy
+        default: .substring
+        }
+        for pane in [leftPane, rightPane] {
+            guard let pane else { continue }
+            for tab in pane.tabList.tabs {
+                tab.viewModel.filterStyle = style
+            }
+        }
     }
 
     // MARK: Terminal pane (F-17 — T-31; 06 §6.8)
@@ -993,6 +1025,8 @@ final class PanelsCoordinator: NSObject {
     }
 
     private func followTerminalPath(_ path: VFSPath) {
+        // F-21 (T-32): the settings «auto-CD off» switch (06 §6.8).
+        guard settingsStore.settings.terminalAutoCd else { return }
         // Archive/SFTP interludes are not cd-able — the shell stays put.
         guard path.root.kind == .localDisk else { return }
         let posix = posixPath(path)

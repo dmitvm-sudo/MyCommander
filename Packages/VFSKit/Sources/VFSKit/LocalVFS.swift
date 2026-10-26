@@ -429,9 +429,13 @@ public final class LocalVFS: VFS, @unchecked Sendable {
         attributes.size = values.isDirectory == true ? nil : Int64(values.fileSize ?? 0)
         attributes.created = values.creationDate
         attributes.modified = values.contentModificationDate
-        // POSIX permissions are not exposed by URLResourceValues — an extra stat per item.
-        let permission = (try? FileManager.default.attributesOfItem(atPath: url.path))?[.posixPermissions] as? Int
-        attributes.posixPermissions = permission.map { Int16(truncatingIfNeeded: $0) }
+        // POSIX permissions and the owner name are not exposed by
+        // URLResourceValues — one extra stat per item serves both (T-32 owner
+        // column, F-4).
+        let itemValues = try? FileManager.default.attributesOfItem(atPath: url.path)
+        attributes.posixPermissions = (itemValues?[.posixPermissions] as? Int)
+            .map { Int16(truncatingIfNeeded: $0) }
+        attributes.owner = itemValues?[.ownerAccountName] as? String
         attributes.isHidden = values.isHidden ?? false
         attributes.tags = LocalVFS.userTags(of: url)
         if let finderInfo = LocalVFS.finderInfo(of: url) {

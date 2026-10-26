@@ -134,3 +134,94 @@ extension SettingsStore {
         fileURL
     }
 }
+
+// MARK: T-32 (F-21 «полные» — 06 §6.9 «Уточнение T-32»): view columns /
+// filter style, archive auto-mount, terminal auto-CD; additive fields ride
+// the optional merge (schemaVersion stays 1).
+
+@MainActor
+@Test func stT32DefaultsIncludeNewFields() {
+    let store = stStore(nil)
+    #expect(store.settings.columns == [.name, .size, .dateModified])
+    #expect(store.settings.filterStyleRaw == "substring")
+    #expect(store.settings.archiveAutoMount == true)
+    #expect(store.settings.terminalAutoCd == true)
+}
+
+@MainActor
+@Test func stT32SectionlessUserFileMergesNewFieldsAsDefaults() {
+    // A pre-T-32 user file (no T-32 keys) decodes the defaults cleanly.
+    let store = stStore("""
+    {
+        "panelFontSize": 14
+    }
+    """)
+    #expect(store.settings.panelFontSize == 14)
+    #expect(store.settings.columns == [.name, .size, .dateModified])
+    #expect(store.settings.archiveAutoMount == true)
+}
+
+@MainActor
+@Test func stT32UserColumnsPersistAndSanitizeOnLoad() {
+    let store = stStore("""
+    {
+        "columns": ["size", "gitStatus", "name", "size", "tags"],
+        "filterStyleRaw": "fuzzy",
+        "archiveAutoMount": false,
+        "terminalAutoCd": false
+    }
+    """)
+    // gitStatus awaits F-27 providers, duplicates collapse, name is first.
+    #expect(store.settings.columns == [.name, .size, .tags])
+    #expect(store.settings.filterStyleRaw == "fuzzy")
+    #expect(store.settings.archiveAutoMount == false)
+    #expect(store.settings.terminalAutoCd == false)
+}
+
+@MainActor
+@Test func stT32UpdatePersistsNewFields() throws {
+    let store = stStore(nil)
+    store.update { schema in
+        schema.filterStyleRaw = "fuzzy"
+        schema.archiveAutoMount = false
+        schema.terminalAutoCd = false
+    }
+    let reloaded = SettingsStore(url: store.settingsFileURL)
+    #expect(reloaded.settings.filterStyleRaw == "fuzzy")
+    #expect(reloaded.settings.archiveAutoMount == false)
+    #expect(reloaded.settings.terminalAutoCd == false)
+}
+
+@MainActor
+@Test func stT32ResetRestoresNewSectionsOnly() {
+    let store = stStore(nil)
+    store.update { schema in
+        schema.columns = [.name, .tags, .owner]
+        schema.filterStyleRaw = "fuzzy"
+        schema.archiveAutoMount = false
+        schema.terminalAutoCd = false
+        schema.deleteConfirmThreshold = 42   // another section stays
+    }
+    store.reset(.view)
+    #expect(store.settings.columns == [.name, .size, .dateModified])
+    #expect(store.settings.filterStyleRaw == "substring")
+    #expect(store.settings.archiveAutoMount == false)
+    #expect(store.settings.deleteConfirmThreshold == 42)
+
+    store.reset(.archive)
+    #expect(store.settings.archiveAutoMount == true)
+    store.reset(.terminal)
+    #expect(store.settings.terminalAutoCd == true)
+    #expect(store.settings.filterStyleRaw == "substring")
+}
+
+@MainActor
+@Test func stT32SanitizedColumnsInvariants() {
+    // name-first, duplicates collapsed, gitStatus cut off until F-27.
+    let sanitized = SettingsStore.sanitizedColumns(
+        [.size, .name, .gitStatus, .size, .tags, .name, .owner]
+    )
+    #expect(sanitized == [.name, .size, .tags, .owner])
+    #expect(SettingsStore.sanitizedColumns([.size, .tags]) == [.name, .size, .tags])
+    #expect(SettingsStore.sanitizedColumns([]) == [.name])
+}

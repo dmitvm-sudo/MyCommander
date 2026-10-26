@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import AppKit
+import DomainKit
 import ServicesKit
 
 // Contract: docs/SDD/06 §6.9 «Контракт v1 (T-18)» — the settings window is
@@ -21,11 +22,23 @@ final class SettingsWindowController: NSWindowController {
     private let thresholdField = SettingsStepperField(min: 1, max: 100)
     // Section: editor.
     private let editorField = NSTextField()
+    // Section: view (T-32 — F-21/F-4).
+    private let columnsField = NSTextField()
+    private let filterStylePopup = NSPopUpButton(frame: .zero, pullsDown: false)
+    private let styleLabel = NSTextField(labelWithString: String(localized: "settings.view.style"))
+    // Section: archive (F-12 auto-mount switch).
+    private let archiveAutoMountCheck = NSButton(
+        checkboxWithTitle: String(localized: "settings.archive.autoMount"), target: nil, action: nil
+    )
+    // Section: terminal (F-17 auto-CD switch, 06 §6.8).
+    private let terminalAutoCdCheck = NSButton(
+        checkboxWithTitle: String(localized: "settings.terminal.autoCd"), target: nil, action: nil
+    )
 
     init(store: SettingsStore) {
         self.store = store
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 440, height: 320),
+            contentRect: NSRect(x: 0, y: 0, width: 470, height: 540),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
@@ -72,9 +85,36 @@ final class SettingsWindowController: NSWindowController {
         let browseButton = NSButton(title: String(localized: "settings.editor.browse"), target: self, action: #selector(browseEditor(_:)))
         browseButton.controlSize = .small
 
+        // T-32: the columns editor takes a compact `ColumnID` JSON (the F-4
+        // acceptance «custom columns — конструктор (JSON-пресет)»).
+        columnsField.placeholderString = String(localized: "settings.view.columns.placeholder")
+        columnsField.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+        columnsField.target = self
+        columnsField.action = #selector(columnsPresetEdited(_:))
+        columnsField.translatesAutoresizingMaskIntoConstraints = false
+
+        filterStylePopup.target = self
+        filterStylePopup.action = #selector(filterStyleChanged(_:))
+        filterStylePopup.addItems(withTitles: [
+            String(localized: "settings.view.style.substring"),
+            String(localized: "settings.view.style.fuzzy"),
+        ])
+        let styleStack = NSStackView(views: [styleLabel, filterStylePopup])
+        styleStack.orientation = .horizontal
+        styleStack.alignment = .centerY
+        styleStack.spacing = 6
+
+        archiveAutoMountCheck.target = self
+        archiveAutoMountCheck.action = #selector(archiveAutoMountChanged(_:))
+        terminalAutoCdCheck.target = self
+        terminalAutoCdCheck.action = #selector(terminalAutoCdChanged(_:))
+
         let appearanceReset = SettingsWindowController.resetButton(target: self, action: #selector(resetAppearance(_:)))
         let deletionReset = SettingsWindowController.resetButton(target: self, action: #selector(resetDeletion(_:)))
         let editorReset = SettingsWindowController.resetButton(target: self, action: #selector(resetEditor(_:)))
+        let viewReset = SettingsWindowController.resetButton(target: self, action: #selector(resetView(_:)))
+        let archiveReset = SettingsWindowController.resetButton(target: self, action: #selector(resetArchive(_:)))
+        let terminalReset = SettingsWindowController.resetButton(target: self, action: #selector(resetTerminal(_:)))
 
         let appearanceSection = SettingsWindowController.section(
             title: String(localized: "settings.section.appearance"),
@@ -88,6 +128,18 @@ final class SettingsWindowController: NSWindowController {
             title: String(localized: "settings.section.editor"),
             rows: [editorField, browseButton, editorReset]
         )
+        let viewSection = SettingsWindowController.section(
+            title: String(localized: "settings.section.view"),
+            rows: [columnsField, styleStack, viewReset]
+        )
+        let archiveSection = SettingsWindowController.section(
+            title: String(localized: "settings.section.archive"),
+            rows: [archiveAutoMountCheck, archiveReset]
+        )
+        let terminalSection = SettingsWindowController.section(
+            title: String(localized: "settings.section.terminal"),
+            rows: [terminalAutoCdCheck, terminalReset]
+        )
 
         let exportButton = NSButton(title: String(localized: "settings.export"), target: self, action: #selector(exportSettings(_:)))
         exportButton.controlSize = .small
@@ -98,7 +150,10 @@ final class SettingsWindowController: NSWindowController {
         footer.alignment = .centerY
         footer.spacing = 10
 
-        let stack = NSStackView(views: [appearanceSection, deletionSection, editorSection, footer])
+        let stack = NSStackView(views: [
+            appearanceSection, deletionSection, editorSection,
+            viewSection, archiveSection, terminalSection, footer,
+        ])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 12
@@ -110,6 +165,8 @@ final class SettingsWindowController: NSWindowController {
             stack.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 14),
             stack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -14),
             editorField.widthAnchor.constraint(equalToConstant: 240),
+            columnsField.widthAnchor.constraint(equalToConstant: 260),
+            filterStylePopup.widthAnchor.constraint(equalToConstant: 150),
         ])
     }
 
@@ -143,6 +200,12 @@ final class SettingsWindowController: NSWindowController {
         sizeField.value = schema.panelFontSize   // fires no store update
         thresholdField.value = Double(max(1, schema.deleteConfirmThreshold))
         editorField.stringValue = schema.textEditorPath
+        columnsField.stringValue = Self.presetJSON(schema.columns)
+        filterStylePopup.selectItem(
+            at: schema.filterStyleRaw == "fuzzy" ? 1 : 0
+        )
+        archiveAutoMountCheck.state = schema.archiveAutoMount ? .on : .off
+        terminalAutoCdCheck.state = schema.terminalAutoCd ? .on : .off
     }
 
     // MARK: actions
@@ -182,6 +245,52 @@ final class SettingsWindowController: NSWindowController {
 
     @objc private func resetEditor(_ sender: NSButton) {
         store.reset(.editor)
+    }
+
+    // MARK: T-32 view/archive/terminal actions
+
+    /// `ColumnID` JSON commit (`["name","size",…]`): valid → update; garbage
+    /// or empty → the stored value comes back (refreshFields).
+    @objc private func columnsPresetEdited(_ sender: NSTextField) {
+        let raw = sender.stringValue.trimmingCharacters(in: .whitespaces)
+        guard let data = raw.data(using: .utf8), !raw.isEmpty,
+              let preset = try? JSONDecoder().decode([ColumnID].self, from: data), !preset.isEmpty
+        else {
+            refreshFields()
+            return
+        }
+        store.update { $0.columns = SettingsStore.sanitizedColumns(preset) }
+    }
+
+    @objc private func filterStyleChanged(_ sender: NSPopUpButton) {
+        let raw = sender.indexOfSelectedItem == 1 ? "fuzzy" : "substring"
+        store.update { $0.filterStyleRaw = raw }
+    }
+
+    @objc private func archiveAutoMountChanged(_ sender: NSButton) {
+        store.update { $0.archiveAutoMount = sender.state == .on }
+    }
+
+    @objc private func terminalAutoCdChanged(_ sender: NSButton) {
+        store.update { $0.terminalAutoCd = sender.state == .on }
+    }
+
+    @objc private func resetView(_ sender: NSButton) {
+        store.reset(.view)
+    }
+
+    @objc private func resetArchive(_ sender: NSButton) {
+        store.reset(.archive)
+    }
+
+    @objc private func resetTerminal(_ sender: NSButton) {
+        store.reset(.terminal)
+    }
+
+    /// Compact `[\"name\",\"size\"]`-style rendering of the preset.
+    private static func presetJSON(_ columns: [ColumnID]) -> String {
+        guard let data = try? JSONEncoder().encode(columns) else { return "[]" }
+        return String(data: data, encoding: .utf8) ?? "[]"
     }
 
     @objc private func exportSettings(_ sender: NSButton) {

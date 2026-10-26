@@ -136,6 +136,26 @@
       }
     },
     {
+      "command": "viewColumns",
+      "context": "global",
+      "combo": {
+        "keyCode": 20,
+        "modifiers": [
+          "control"
+        ]
+      }
+    },
+    {
+      "command": "viewThumbnails",
+      "context": "global",
+      "combo": {
+        "keyCode": 21,
+        "modifiers": [
+          "control"
+        ]
+      }
+    },
+    {
       "command": "selectAll",
       "context": "global",
       "combo": {
@@ -357,6 +377,26 @@
       "context": "panelList",
       "combo": {
         "keyCode": 19,
+        "modifiers": [
+          "control"
+        ]
+      }
+    },
+    {
+      "command": "viewColumns",
+      "context": "panelList",
+      "combo": {
+        "keyCode": 20,
+        "modifiers": [
+          "control"
+        ]
+      }
+    },
+    {
+      "command": "viewThumbnails",
+      "context": "panelList",
+      "combo": {
+        "keyCode": 21,
         "modifiers": [
           "control"
         ]
