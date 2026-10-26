@@ -12,6 +12,15 @@ final class MyCommanderApp: NSObject, NSApplicationDelegate {
     private var coordinator: PanelsCoordinator?
     private var mainWindow: MainWindowController?
     private var onboardingFlow: OnboardingFlow?
+    private var updater: UpdaterController?
+
+    /// T-37 (README/help): the Help menu entry opens the repo README (online
+    /// docs stay the single source of truth — no offline help book in v1).
+    @objc func openHelp(_ sender: NSMenuItem?) {
+        let docs = URL(string: "https://github.com/dmitvm-sudo/MyCommander#readme")  // l10n-allow: URL, not UI copy
+            ?? URL(fileURLWithPath: "/")
+        NSWorkspace.shared.open(docs)
+    }
 
     func run() {
         let application = NSApplication.shared
@@ -20,11 +29,20 @@ final class MyCommanderApp: NSObject, NSApplicationDelegate {
 
         let coordinator = PanelsCoordinator()
         self.coordinator = coordinator
+        // T-37 (F-9): the updater starts only from a release bundle config;
+        // the menu reflects availability (dev = disabled item).
+        let updater = UpdaterController()
+        self.updater = updater
+        updater.start()
         // T-09: the menu reflects the active keymap profile (§6.10).
+        coordinator.menuUpdater = updater
+        coordinator.menuHelpTarget = self
         application.mainMenu = MenuBuilder.build(
             router: coordinator.router,
             keymap: coordinator.keymapStore,
-            locations: coordinator.locationsStore
+            locations: coordinator.locationsStore,
+            updater: updater,
+            helpTarget: self
         )
 
         let mainWindow = MainWindowController(coordinator: coordinator)

@@ -75,7 +75,13 @@ enum MenuBuilder {
         ]),
     ]
 
-    static func build(router: CommandRouter, keymap: KeymapStore, locations: LocationsStore? = nil) -> NSMenu {
+    static func build(
+        router: CommandRouter,
+        keymap: KeymapStore,
+        locations: LocationsStore? = nil,
+        updater: UpdaterController? = nil,
+        helpTarget: NSApplicationDelegate? = nil
+    ) -> NSMenu {
         let main = NSMenu()
 
         // Application menu (nil-target responder chain item).
@@ -145,6 +151,32 @@ enum MenuBuilder {
         windowMenu.addItem(withTitle: String(localized: "menu.zoom"), action: #selector(NSWindow.performZoom(_:)), keyEquivalent: "")
         windowItem.submenu = windowMenu
         main.addItem(windowItem)
+
+    // T-37 (F-9): the updater check rides the app menu (target = controller;
+    // disabled until a release bundle config exists — dev assemblies keep
+    // it grey).
+        let checkItem = NSMenuItem(
+            title: String(localized: "menu.checkUpdates"),
+            action: #selector(UpdaterController.checkForUpdates),
+            keyEquivalent: ""
+        )
+        checkItem.target = updater
+        checkItem.isEnabled = updater?.isAvailable ?? false
+        appMenu.addItem(checkItem)
+
+    // T-37 (README/help): the Help menu opens the online docs (repo README);
+    // macOS convention keeps Help as the LAST main-menu item. The action lives
+    // on the app delegate (explicit target — responder-chain lookup for a
+    // custom selector ends at nothing).
+        if let helpTarget {
+            let helpItem = NSMenuItem()
+            let helpMenu = NSMenu(title: String(localized: "menu.help"))
+            let helpEntry = NSMenuItem(title: String(localized: "menu.openHelp"), action: #selector(MyCommanderApp.openHelp(_:)), keyEquivalent: "")
+            helpEntry.target = helpTarget
+            helpMenu.addItem(helpEntry)
+            helpItem.submenu = helpMenu
+            main.addItem(helpItem)
+        }
 
         return main
     }

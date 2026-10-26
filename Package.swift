@@ -15,6 +15,11 @@ let dependencies: [Package.Dependency] = [
     .package(url: "https://github.com/apple/swift-nio.git", from: "2.81.0"),
     // T-31 (F-17): SwiftTerm PTY-хост встроенного терминала (NOTICE: MIT).
     .package(url: "https://github.com/migueldeicaza/SwiftTerm.git", from: "1.2.0"),
+    // T-37 (F-9): автообновления Sparkle 2 (NOTICE: MIT); appcast — GitHub
+    // Releases + репо-хост appcast.xml; ключи/фид живут в Info.plist
+    // релизного app-bundle (Tools/release/build-app.sh) — dev-сборки без
+    // Info.plist остаются неактивны (UpdaterController gate).
+    .package(url: "https://github.com/sparkle-project/Sparkle.git", from: "2.6.4"),
     // T-23: NIOSSH (тест-стенд: SSHServer host keys + auth delegate) — продукт
     // форка, на который пинится Citadel 0.12.1 (NOTICE: Apache-2.0).
     .package(url: "https://github.com/Wellz26/swift-nio-ssh.git", from: "0.3.4"),
@@ -98,7 +103,10 @@ let testTargets: [Target] = modules.map { module in
 
 let executable: Target = .executableTarget(
     name: "MyCommander",
-    dependencies: modules.map { .byName(name: $0.name) },
+    dependencies: modules.map { .byName(name: $0.name) } + [
+        // T-37 (F-9): Sparkle 2 автообновления (только app-уровень).
+        .product(name: "Sparkle", package: "Sparkle"),
+    ],
     path: "App",
     resources: [.process("Resources")]   // T-09: keymap-*.json (docs/SDD/11)
 )

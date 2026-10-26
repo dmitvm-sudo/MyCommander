@@ -128,6 +128,9 @@
 "menu.home" = "Домой";
 "menu.hotSlotBookmark" = "[%ld] %@";
 "menu.hotSlotFormat" = "Слот %ld";
+"menu.checkUpdates" = "Проверить обновления…";
+"menu.help" = "Справка";
+"menu.openHelp" = "Справка MyCommander онлайн";
 "menu.insertPath" = "Вставить путь в терминал";
 "menu.invertSelection" = "Инвертировать выделение";
 "menu.itemInfo" = "Свойства";

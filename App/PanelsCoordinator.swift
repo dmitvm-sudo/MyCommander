@@ -830,10 +830,23 @@ final class PanelsCoordinator: NSObject {
     }
 
     /// T-26: the Locations section carries live slot names — rebuild after
-    /// bookmark changes (menu built once at launch otherwise).
+    /// bookmark changes (menu built once at launch otherwise). T-37: the
+    /// updater/help items must survive the rebuild — the app injects them
+    /// right after init (they are App-level, not the coordinator's concern).
     func rebuildMenu() {
-        NSApp.mainMenu = MenuBuilder.build(router: router, keymap: keymapStore, locations: locationsStore)
+        NSApp.mainMenu = MenuBuilder.build(
+            router: router,
+            keymap: keymapStore,
+            locations: locationsStore,
+            updater: menuUpdater,
+            helpTarget: menuHelpTarget
+        )
     }
+
+    /// T-37: App-level menu companions (updater availability + help target)
+    /// injected by MyCommanderApp after init — used on every rebuild.
+    weak var menuUpdater: UpdaterController?
+    weak var menuHelpTarget: NSApplicationDelegate?
 
     // MARK: SFTP connect (F-13, T-24; 06 §6.5/§6.9)
 

@@ -29,11 +29,7 @@
 | tayloraswift/swift-png | Apache-2.0 | транзитивная dep SwiftTerm | M3 (T-31) |
 | rarestype/h | Apache-2.0 | транзитивная dep SwiftTerm | M3 (T-31) |
 | migueldeicaza/SwiftTerm | MIT | встроенный PTY-terminal (F-17: SwiftTerm-хост, resize/copy/paste, tmux/ssh/vim) | M3 (T-31) |
-
-## Запланировано (лицензию подтвердить при добавлении)
-| Пакет | Лицензия | Назначение | Появится в |
-|---|---|---|---|
-| Sparkle | MIT | автообновления | v1.0 (T-37) |
+| sparkle-project/Sparkle | MIT | автообновления (F-9: EdDSA-подпись appcast, GitHub Releases хост) | v1.0 (T-37) |
 
 ## Явно исключено
 - unrar / RAR-код — лицензионные ограничения (docs/SDD, риск R5); в core не включается.

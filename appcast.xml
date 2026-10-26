@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Sparkle 2 appcast (03 N-9): EdDSA-signed items; hosted at the repo root
+     for the release feed URL (Info.plist SUFeedURL). Items are appended by
+     Tools/release/update-appcast.sh at release time; a «beta» in the version
+     string puts the item on the beta channel (stable updaters ignore it). -->
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/" version="2.0">
+  <channel>
+    <title>MyCommander updates</title>
+    <link>https://github.com/dmitvm-sudo/MyCommander/releases</link>
+    <description>MyCommander appcast (Sparkle 2 · EdDSA · 03 N-9)</description>
+    <language>ru</language>
+  </channel>
+</rss>

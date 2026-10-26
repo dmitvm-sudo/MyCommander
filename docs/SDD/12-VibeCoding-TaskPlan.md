@@ -562,6 +562,45 @@ _(этот слот оставлен пустым намеренно: нумер
   localization-check OK (281 ключей, 0 hardcoded).
 
 ### T-37. Релиз-инженерия: Sparkle, DMG+notarization, GitHub Releases, README/help, NOTICE-проверка, beta-канал
+
+- **Уточнение (по ходу реализации T-37):** (1) N-10-порядок соблюдён:
+  NOTICE-строка `sparkle-project/Sparkle` (MIT) → затем Package.swift
+  (`from: 2.6.4`; резолвится бинарный artifact **2.10.1** — xcframework:
+  фреймворк копируется из `.build/artifacts/sparkle/…/Sparkle.xcframework
+  /macos-arm64_x86_64/` в `Contents/Frameworks` +
+  `install_name_tool -add_rpath @executable_path/../Frameworks`; deфолтный
+  install name `@rpath/Sparkle.framework/Versions/B/Sparkle`). (2)
+  UpdaterController (App-уровень): gate = `Bundle.main.infoDictionary?
+  ["SUFeedURL"]` — SPM dev-сборки без Info.plist остаются неактивны (пункт
+  меню «Проверить обновления…» disabled; N-9 «нет сети без запроса»);
+  ошибка старта Sparkle = NSLog + неактивный пункт, никогда не крашит.
+  (3) Меню: updater-пункт в app-menu (target = контроллер), help-меню
+  последним (macOS-конвенция) → `openHelp` app-делегата (README онлайн);
+  `PanelsCoordinator.rebuildMenu` (T-26) теперь прокидывает
+  `menuUpdater`/`menuHelpTarget` через weak-поля, иначе rebuild терял эти
+  пункты. Локализация: `menu.checkUpdates`/`menu.help`/`menu.openHelp`
+  (en+ru parity, 284 ключа). (4) Релиз-конвейерка `Tools/release/`:
+  Info.plist.in (template; SUFeedURL = raw-GitHub-raw appcast);
+  build-app.sh (swift build -c release → бинарный + merge
+  `MyCommander_MyCommander.bundle` в Contents/Resources — lproj живут в
+  app-bundle, урок T-35; Sparkle.framework → Contents/Frameworks; codesign
+  deep: `SIGN_IDENTITY` real / ad-hoc по умолчанию); make-dmg.sh (UDZO +
+  symlink /Applications); notarize.sh (notarytool submit --wait + stapler,
+  credentials через NOTARY_KEYCHAIN_PROFILE или AC_* secrets, loud-fail
+  при отсутствии); update-appcast.sh (edSignature из `sign_update` — бин
+  найден в artifact `Sparkle/bin/sign_update`; без ключа — unsigned item +
+  warning, релиз переживёт при перезапуске; `sparkle:channel=beta` при
+  `-betaN` в версии). (5) `.github/workflows/release.yml`: тег `v*` →
+  build-app (APP_VERSION=${ref#v}, APP_BUILD=run number) → DMG → notarize
+  (job-env gate `NOTARY_CONFIGURED` из secrets — step-`if` не читает
+  secrets напрямую) → appcast (unsigned = draft) → `gh release create`
+  (DMG + appcast.xml). Верификация конвейейки (подпись/notarization/
+  clean-machine) — вручную на первом теге (09 M3-exit п.4; smoke 8.4 п.10 —
+  Sparkle-обновление живьём). (6) README: разделы «Установка (релиз)»/
+  «Помощь»/«Tools/release». (7) Гейты: build 0 warnings; функциональные
+  тесты — ниже; license-check OK (Sparkle в resolved ↔ NOTICE);
+  localization-check OK (284 ключей, 0 hardcoded).
+
 ### T-38. Бета-цикл: сбор фидбек, краш-фиксы, замер crash-free ≥ 99.5 %
 
 ## v1.x (бэклог — спецификации пишутся при входе)

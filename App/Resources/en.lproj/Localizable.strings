@@ -128,6 +128,12 @@
 "menu.home" = "Home";
 "menu.hotSlotBookmark" = "[%ld] %@";
 "menu.hotSlotFormat" = "Slot %ld";
+"menu.checkUpdates" = "Check for Updates…";
+"menu.help" = "Help";
+"menu.openHelp" = "MyCommander Online Help";
+"menu.checkUpdates" = "Check for Updates…";
+"menu.help" = "Help";
+"menu.openHelp" = "MyCommander Online Help";
 "menu.insertPath" = "Insert Path into Terminal";
 "menu.invertSelection" = "Invert Selection";
 "menu.itemInfo" = "Properties";

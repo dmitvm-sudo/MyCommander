@@ -1,0 +1,66 @@
+name: Release
+
+# T-37 (docs/SDD/11 Tools/release; 03 N-9): on a `v*` tag — build the app
+# bundle, make the DMG, refresh the appcast and publish the GitHub Release.
+# Notarization runs only when Apple credentials are configured (09 M3-exit
+# п.4 requires clean-machine verification; the CI step is best-effort and
+# SKIPS LOUD when secrets are absent).
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write   # gh release upload
+
+jobs:
+  release:
+    name: Build + DMG + GitHub Release
+    runs-on: macos-latest
+    env:
+      # Job-level env may read secrets (step-level if cannot). Coarse gate:
+      # all three vars present → the notary step runs.
+      NOTARY_CONFIGURED: ${{ secrets.AC_USERNAME != '' && secrets.AC_PASSWORD != '' && secrets.AC_TEAM_ID != '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # APP_BUILD = git rev-list count
+
+      - name: Build the app bundle
+        run: |
+          APP_VERSION="${GITHUB_REF_NAME#v}" ./Tools/release/build-app.sh
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "MYCOMMANDER_VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Make the DMG
+        run: ./Tools/release/make-dmg.sh
+
+      - name: Notarize (only with Apple credentials configured)
+        if: ${{ env.NOTARY_CONFIGURED == 'true' }}
+        run: ./Tools/release/notarize.sh "build/release/MyCommander-$MYCOMMANDER_VERSION.dmg"
+        env:
+          AC_USERNAME: ${{ secrets.AC_USERNAME }}
+          AC_PASSWORD: ${{ secrets.AC_PASSWORD }}
+          AC_TEAM_ID: ${{ secrets.AC_TEAM_ID }}
+
+      - name: Skip note (no credentials — notarization happened nowhere)
+        if: ${{ env.NOTARY_CONFIGURED != 'true' }}
+        run: echo "::warning::Notarization SKIPPED — AC_USERNAME/AC_PASSWORD/AC_TEAM_ID secrets are not configured (03 N-9 requires it for a real distribution)"
+
+      - name: Refresh the appcast
+        # The CI runner carries no EdDSA private key by design (supply
+        # chain): the item lands unsigned — the release desk re-signs the
+        # DMG + appcast with Sparkle's sign_update before hosting (03 N-9
+        # EdDSA contract; the unsigned appcast intentionally stays a draft).
+        run: |
+          APP_BUILD="${GITHUB_RUN_NUMBER}" SKIP_SIGNATURE_WARNING=1 \
+            ./Tools/release/update-appcast.sh "build/release/MyCommander-$MYCOMMANDER_VERSION.dmg"
+
+      - name: Publish the GitHub Release
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --title "MyCommander ${{ github.ref_name }}" \
+            --generate-notes \
+            "build/release/MyCommander-$MYCOMMANDER_VERSION.dmg" \
+            appcast.xml
+        env:
+          GH_TOKEN: ${{ github.token }}

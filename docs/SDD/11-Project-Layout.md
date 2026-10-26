@@ -116,6 +116,12 @@ MyCommander/
 ├── Tools/fixture-generator/         # SPM-утилита генерации деревьев/файлов
 ├── Tools/license-check.sh           # N-10: NOTICE ↔ Package.resolved
 ├── Tools/localization-check.sh      # F-22 lint: UI-литералы без букв, ключи ↔ .strings
+├── Tools/release/                   # T-37 релиз-конвейерка (03 N-9):
+│   ├── Info.plist.in                #   шаблон CFBundle*/SUFeedURL/EdDSA-ключ
+│   ├── build-app.sh                 #   .app: бинарный + ресурсы + Sparkle + подпись
+│   ├── make-dmg.sh                  #   UDZO-образ (+ symlink /Applications)
+│   ├── notarize.sh                  #   notarytool submit --wait + stapler
+│   └── update-appcast.sh            #   appcast.xml items (beta-канал по ‑betaN)
 └── Tests/SharedFixtures/            # golden-архивы, ключи ssh (CI), образы-скрипты
 ```
 

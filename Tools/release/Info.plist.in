@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- T-37 release assembly template (docs/SDD/11 Tools/release): placeholders
+         are substituted by Tools/release/build-app.sh (env-driven). Sparkle
+         config (03 N-9): the EdDSA public key and feed live ONLY in the
+         release Info.plist; dev SPM builds run without this plist and stay
+         dormant (App/UpdaterController gate). -->
+    <key>CFBundleDevelopmentRegion</key><string>en</string>
+    <key>CFBundleExecutable</key><string>MyCommander</string>
+    <key>CFBundleIconFile</key><string>AppIcon</string>
+    <key>CFBundleIdentifier</key><string>@BUNDLE_ID@</string>
+    <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+    <key>CFBundleName</key><string>MyCommander</string>
+    <key>CFBundleDisplayName</key><string>MyCommander</string>
+    <key>CFBundlePackageType</key><string>APPL</string>
+    <key>CFBundleShortVersionString</key><string>@VERSION@</string>
+    <key>CFBundleVersion</key><string>@BUILD@</string>
+    <key>LSMinimumSystemVersion</key><string>14.0</string>
+    <key>NSHumanReadableCopyright</key><string>GPL-3.0-or-later</string>
+    <key>NSPrincipalClass</key><string>NSApplication</string>
+    <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
+    <!-- Sparkle 2 (F-9): fill SUFeedURL/SUPublicEDKey at release time.
+         @SPARKLE_FEED_URL@ / @SPARKLE_EDDSA_KEY@ placeholders below. -->
+    <key>SUFeedURL</key><string>@SPARKLE_FEED_URL@</string>
+    <key>SUPublicEDKey</key><string>@SPARKLE_EDDSA_KEY@</string>
+    <key>SUEnableAutomaticChecks</key><true/>
+</dict>
+</plist>
