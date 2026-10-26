@@ -131,9 +131,12 @@
 "menu.checkUpdates" = "Check for Updates…";
 "menu.help" = "Help";
 "menu.openHelp" = "MyCommander Online Help";
-"menu.checkUpdates" = "Check for Updates…";
-"menu.help" = "Help";
-"menu.openHelp" = "MyCommander Online Help";
+"menu.exportBetaReport" = "Export Beta Report…";
+"feedback.savedTitle" = "Beta report saved";
+"feedback.savedBody" = "Report file: %@\nAttach it to a GitHub issue (N-9: manual submission).";
+"feedback.failedTitle" = "Report save failed";
+"feedback.failedBody" = "Could not write the report: %@";
+"feedback.okButton" = "OK";
 "menu.insertPath" = "Insert Path into Terminal";
 "menu.invertSelection" = "Invert Selection";
 "menu.itemInfo" = "Properties";

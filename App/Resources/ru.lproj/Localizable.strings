@@ -131,6 +131,12 @@
 "menu.checkUpdates" = "Проверить обновления…";
 "menu.help" = "Справка";
 "menu.openHelp" = "Справка MyCommander онлайн";
+"menu.exportBetaReport" = "Экспорт отчёта беты…";
+"feedback.savedTitle" = "Отчёт беты сохранён";
+"feedback.savedBody" = "Файл отчёта: %@\nПриложите его к задаче на GitHub (N-9: отправка вручную).";
+"feedback.failedTitle" = "Ошибка сохранения отчёта";
+"feedback.failedBody" = "Не удалось записать отчёт: %@";
+"feedback.okButton" = "Готово";
 "menu.insertPath" = "Вставить путь в терминал";
 "menu.invertSelection" = "Инвертировать выделение";
 "menu.itemInfo" = "Свойства";

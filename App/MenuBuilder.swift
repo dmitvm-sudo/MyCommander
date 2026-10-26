@@ -174,6 +174,15 @@ enum MenuBuilder {
             let helpEntry = NSMenuItem(title: String(localized: "menu.openHelp"), action: #selector(MyCommanderApp.openHelp(_:)), keyEquivalent: "")
             helpEntry.target = helpTarget
             helpMenu.addItem(helpEntry)
+            // T-38: beta feedback export — save-panel from the dev's own app,
+            // the user mails/files it (N-9: no network by design).
+            let exportEntry = NSMenuItem(
+                title: String(localized: "menu.exportBetaReport"),
+                action: #selector(MyCommanderApp.exportBetaReport(_:)),
+                keyEquivalent: ""
+            )
+            exportEntry.target = helpTarget
+            helpMenu.addItem(exportEntry)
             helpItem.submenu = helpMenu
             main.addItem(helpItem)
         }

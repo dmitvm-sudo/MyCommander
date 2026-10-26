@@ -405,7 +405,25 @@ struct SettingsSchema: Codable, Sendable, Equatable {
 - **KeymapStore**: профили (default TC-style / macOS-style / user), запись — `KeyCombo` (keyCode + modifiers), конфликты forbidden при сохранении;
 - **LocationsStore** (закладки/Hotlist/история per-tab; hot-Slots 9);
 - **ConnectionStore** + Keychain (kSecClassGenericPassword, service `MyCommander.connection.<id>`) — никогда не в JSON;
-- **SessionStore**: перенастраиваемый список табов к моменту выхода (restore on launch).
+- **SessionStore**: перенастраиваемый список табов к моменту выхода (restore on launch);
+- **BetaTelemetry** (уточнение T-38, ServicesKit, AppKit-free): локальный учёт беты —
+  НИКАКОЙ сети и авто-отправок (N-9). Два файла в каталоге `Application Support/MyCommander/`:
+  (1) `beta-sessions.jsonl` — по строке на сессию `{id, start, end?, crash?}`, cap 500
+  (обрезка по голове); (2) `beta-crash.txt` — append-лог tombstone-строк
+  `mc-crash <kind> t=<unix>`, kinds = сигнал/NSException (6 сигналов SIGABRT/SEGV/BUS/ILL/FPE/TRAP
+  + `exception`), записи БЕЗ пользовательских данных (только машина-время и вид). Сигнатура
+  записи — async-signal-safe: fd открывается при `install()` (один на сессию), хендлер пишет
+  константные байты + time() цифрами вручную, без Foundation/alloc. Метрика crash-free
+  (формула v1, цель 03 §N-крэш 99.5 %): сессия закрыта чисто = `end` записан;
+  краш-сессия определяется ФЛАГОМ в леджере (атрибуция = СТАРТ-операция одного
+  запуска: `beginSession` обнаруживает tombstone в окне prior-открытой сессии
+  и пишет `crash=true` на диск — детерминированно и без повторного окнового
+  скана); «незакрытая без tombstone» (kill/force-quit) = unterminated, в rate
+  НЕ входит (юзер-инициированное прерывание). `crashFreeRate = clean / (clean + crashed)`.
+  Сбор фидбек = `feedbackReport()` (версия/билд, macOS, сводка сессий, последние tombstones)
+  → App пишет в файл через NSSavePanel — юзер отправляет сам (GitHub issue); отчёт тоже без
+  персональных данных. Оба чтения толерируют чужие/битые строки (по образцу schemaVersion-
+  игнооров сторов).
 
 *Уточнение T-24 (ConnectionStore — F-13, 05 §5.7):*
 - `ConnectionsSnapshot` (`connections.json`, schemaVersion 1): `records: [ConnectionRecord]`.
