@@ -980,6 +980,9 @@ final class PanelsCoordinator: NSObject {
         let font = NSFont.wrappedPanelFont(from: schema)
         leftPane?.fileListView.applyPanelFont(font)
         rightPane?.fileListView.applyPanelFont(font)
+        // T-33 (F-23 частично): light/dark ride NSApp.appearance, ncBlue
+        // repaints the panel list surfaces with the LV tokens.
+        applyTheme(schema.themeRaw)
         // T-32 (F-21/F-4): the columns preset feeds BOTH panels live; filter
         // style rides into every tab view model (each tab keeps its own VM).
         for pane in [leftPane, rightPane] {
@@ -996,6 +999,20 @@ final class PanelsCoordinator: NSObject {
                 tab.viewModel.filterStyle = style
             }
         }
+    }
+
+    /// T-33 (F-23 частично; 06 §6.9 «Уточнение T-33»): system/light/dark are
+    /// an appearance-level switch — the system colors carry the theme; ncBlue
+    /// additionally repaints the panel list surfaces with the LV token set.
+    private func applyTheme(_ raw: String) {
+        switch raw {
+        case "light": NSApp.appearance = NSAppearance(named: .aqua)
+        case "dark": NSApp.appearance = NSAppearance(named: .darkAqua)
+        default: NSApp.appearance = nil   // «system» and any unknown value
+        }
+        let tokens: PanelTheme? = raw == "ncBlue" ? .ncBlueClassic : nil
+        leftPane?.fileListView.applyTheme(tokens)
+        rightPane?.fileListView.applyTheme(tokens)
     }
 
     // MARK: Terminal pane (F-17 — T-31; 06 §6.8)

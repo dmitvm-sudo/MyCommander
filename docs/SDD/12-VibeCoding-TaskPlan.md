@@ -414,6 +414,39 @@ _(этот слот оставлен пустым намеренно: нумер
   [SettingsStoreTests дополнения, FileListViewColumnsTests]); license-check OK
   (новых dep нет — QuickLookThumbnailing системный).
 ### T-33. Темы (F-23 частично): light/dark/NC-blue, шрифты_(каждая задача: файлы из соответствующих модулей по карте `11`, критерии приёмки — из карточек фич `02`; тесты — unit + integration; пункт «Готово» = все acceptance критерии фичи.)_
+- **Готово:** SettingsSchema `themeRaw` («system»/«light»/«dark»/«ncBlue»,
+  additive, schemaVersion 1, reset(.appearance) накрывает); App —
+  `applyTheme(raw)`: light/dark через `NSApp.appearance` (.aqua/.darkAqua/
+  nil = system), ncBlue → `PanelTheme.ncBlueClassic` → `FileListView.applyTheme`
+  (обе панели, live по `onDidUpdate`); LV — `PanelTheme`
+  (rowBackground/rowAlternate?/rowText/rowSecondaryText, Equatable +
+  @unchecked Sendable — NSColor без аннотации), applyTheme красит
+  backgroundColor + ряды через delegate `didAdd` (NSTableView НЕ умеет
+  перекрасить системную альтернацию напрямую), nil восстанавливает
+  дефолт (захвачен при build); ячейки получают токен в viewFor (NameCell —
+  stash-токен, рендер учитывает hidden→secondary; MetaCell — direct color);
+  окно настроек: theme-popup (4 пункта) + NSComboBox font-family (editable,
+  пусто = системное лицо, live через существующий applyPanelFont);
+  Localizable-ключи — сырые (каталог T-35).
+- **Уточнение (по ходу реализации T-33):** (1) **NSTableView не имеет
+  пер-таблицного custom-alternating API в этом SDK** — только
+  `usesAlternatingRowBackgroundColors: BOOL`; кастомные цвета рядов
+  подставляются в delegate `tableView(_:didAdd:forRowAt:)` через
+  `NSTableRowView.backgroundColor` (даже/нечётные). (2) Порядок в `viewFor`
+  критичен: `themeCall(cell)` ДО render — свежесозданная ячейка первый раз
+  красится из токена; post-render `applyThemeColors` переКрасил бы только
+  переиспользованные. (3) `static let` preset на не-Sendable struct =
+  MutableGlobalVariable-ошибка; NSColor не Sendable → `@unchecked Sendable`
+  на immutable-структуре (легально и для struct). (4) `NSColor ==` между
+  catalog-цветом (labelColor) и sRGB-константой НЕ равны — тесты сравнивают
+  только наши же токены/захваченный дефолт. (5) NSComboBox: `completes` +
+  editable, `stringValue` читается в action (Enter/Tab-commit) — паттерн
+  NSTextField-полей. (6) Скиning-границы v1 согласно §6.9 T-33: ncBlue
+  красит ТОЛЬКО списки панелей (tab-chrome/диалоги/Lister/терминал —
+  системные, расширение v1.x); light/dark меняют только NSApp.appearance —
+  системные цвета сами, тесты UI-нейтральны.
+- **Гейты:** build 0 warnings; Debug + Release — 355 зелёных
+  (+6: thm*4 + stT33*2); license-check OK (новых dep нет).
 
 ### T-34. M3 hardening: smoke 8.4 п.8–9; перф-регрессии; ADR-догма обновлений.
 

@@ -17,6 +17,10 @@ final class SettingsWindowController: NSWindowController {
     // Section: appearance.
     private let monoCheck = NSButton(checkboxWithTitle: String(localized: "settings.appearance.mono"), target: nil, action: nil)
     private let sizeField = SettingsStepperField(min: 9, max: 24)
+    private let themePopup = NSPopUpButton(frame: .zero, pullsDown: false)
+    private let themeLabel = NSTextField(labelWithString: String(localized: "settings.appearance.theme"))
+    private let fontFamilyCombo = NSComboBox()
+    private let familyLabel = NSTextField(labelWithString: String(localized: "settings.appearance.family"))
     // Section: deletion.
     private let confirmDeleteCheck = NSButton(checkboxWithTitle: String(localized: "settings.deletion.confirm"), target: nil, action: nil)
     private let thresholdField = SettingsStepperField(min: 1, max: 100)
@@ -70,6 +74,32 @@ final class SettingsWindowController: NSWindowController {
             self?.store.update { $0.panelFontSize = value }
         }
 
+        // T-33 (F-23 частично): a 4-choice theme selector; the font-family
+        // combo is editable (empty = system face).
+        themePopup.target = self
+        themePopup.action = #selector(themeChanged(_:))
+        themePopup.addItems(withTitles: [
+            String(localized: "settings.theme.system"),
+            String(localized: "settings.theme.light"),
+            String(localized: "settings.theme.dark"),
+            String(localized: "settings.theme.ncBlue"),
+        ])
+        let themeStack = NSStackView(views: [themeLabel, themePopup])
+        themeStack.orientation = .horizontal
+        themeStack.alignment = .centerY
+        themeStack.spacing = 6
+
+        fontFamilyCombo.completes = true
+        fontFamilyCombo.addItems(withObjectValues: [
+            "SF Mono", "Menlo", "Monaco", "Andale Mono", "Courier New",
+        ])
+        fontFamilyCombo.target = self
+        fontFamilyCombo.action = #selector(fontFamilyChanged(_:))
+        let familyStack = NSStackView(views: [familyLabel, fontFamilyCombo])
+        familyStack.orientation = .horizontal
+        familyStack.alignment = .centerY
+        familyStack.spacing = 6
+
         confirmDeleteCheck.target = self
         confirmDeleteCheck.action = #selector(confirmDeleteChanged(_:))
 
@@ -118,7 +148,7 @@ final class SettingsWindowController: NSWindowController {
 
         let appearanceSection = SettingsWindowController.section(
             title: String(localized: "settings.section.appearance"),
-            rows: [monoCheck, sizeField, appearanceReset]
+            rows: [monoCheck, sizeField, themeStack, familyStack, appearanceReset]
         )
         let deletionSection = SettingsWindowController.section(
             title: String(localized: "settings.section.deletion"),
@@ -167,6 +197,8 @@ final class SettingsWindowController: NSWindowController {
             editorField.widthAnchor.constraint(equalToConstant: 240),
             columnsField.widthAnchor.constraint(equalToConstant: 260),
             filterStylePopup.widthAnchor.constraint(equalToConstant: 150),
+            themePopup.widthAnchor.constraint(equalToConstant: 150),
+            fontFamilyCombo.widthAnchor.constraint(equalToConstant: 160),
         ])
     }
 
@@ -198,6 +230,10 @@ final class SettingsWindowController: NSWindowController {
         monoCheck.state = schema.useMonospacedPanelFont ? .on : .off
         confirmDeleteCheck.state = schema.confirmDelete ? .on : .off
         sizeField.value = schema.panelFontSize   // fires no store update
+        themePopup.selectItem(
+            at: ["system", "light", "dark", "ncBlue"].firstIndex(of: schema.themeRaw) ?? 0
+        )
+        fontFamilyCombo.stringValue = schema.panelFontFamily
         thresholdField.value = Double(max(1, schema.deleteConfirmThreshold))
         editorField.stringValue = schema.textEditorPath
         columnsField.stringValue = Self.presetJSON(schema.columns)
@@ -212,6 +248,17 @@ final class SettingsWindowController: NSWindowController {
 
     @objc private func monoChanged(_ sender: NSButton) {
         store.update { $0.useMonospacedPanelFont = sender.state == .on }
+    }
+
+    // MARK: T-33 theme / font-family actions
+
+    @objc private func themeChanged(_ sender: NSPopUpButton) {
+        let raw = ["system", "light", "dark", "ncBlue"][max(0, sender.indexOfSelectedItem)]
+        store.update { $0.themeRaw = raw }
+    }
+
+    @objc private func fontFamilyChanged(_ sender: NSComboBox) {
+        store.update { $0.panelFontFamily = sender.stringValue.trimmingCharacters(in: .whitespaces) }
     }
 
     @objc private func confirmDeleteChanged(_ sender: NSButton) {

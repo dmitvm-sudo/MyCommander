@@ -37,6 +37,9 @@ public struct SettingsSchema: Codable, Sendable, Equatable {
     public var panelFontFamily: String
     public var panelFontSize: Double
     public var useMonospacedPanelFont: Bool
+    /// F-23 (T-33): «system» | «light» | «dark» | «ncBlue»; invalid values
+    /// stay raw — the App maps them back to system.
+    public var themeRaw: String
 
     // MARK: deletion (07 §7.3: confirm at ≥ N items)
 
@@ -75,6 +78,7 @@ public struct SettingsSchema: Codable, Sendable, Equatable {
         panelFontFamily: "",
         panelFontSize: 13,
         useMonospacedPanelFont: true,
+        themeRaw: "system",
         confirmDelete: true,
         deleteConfirmThreshold: 5,
         textEditorPath: "",
@@ -93,6 +97,7 @@ public struct SettingsSchema: Codable, Sendable, Equatable {
         panelFontFamily: String,
         panelFontSize: Double,
         useMonospacedPanelFont: Bool,
+        themeRaw: String,
         confirmDelete: Bool,
         deleteConfirmThreshold: Int,
         textEditorPath: String,
@@ -105,6 +110,7 @@ public struct SettingsSchema: Codable, Sendable, Equatable {
         self.panelFontFamily = panelFontFamily
         self.panelFontSize = panelFontSize
         self.useMonospacedPanelFont = useMonospacedPanelFont
+        self.themeRaw = themeRaw
         self.confirmDelete = confirmDelete
         self.deleteConfirmThreshold = deleteConfirmThreshold
         self.textEditorPath = textEditorPath
@@ -121,6 +127,7 @@ private struct SettingsOverrides: Codable {
     var panelFontFamily: String?
     var panelFontSize: Double?
     var useMonospacedPanelFont: Bool?
+    var themeRaw: String?
     var confirmDelete: Bool?
     var deleteConfirmThreshold: Int?
     var textEditorPath: String?
@@ -179,6 +186,7 @@ public final class SettingsStore {
                 schema.panelFontFamily = schemaDefault.panelFontFamily
                 schema.panelFontSize = schemaDefault.panelFontSize
                 schema.useMonospacedPanelFont = schemaDefault.useMonospacedPanelFont
+                schema.themeRaw = schemaDefault.themeRaw
             case .deletion:
                 schema.confirmDelete = schemaDefault.confirmDelete
                 schema.deleteConfirmThreshold = schemaDefault.deleteConfirmThreshold
@@ -233,6 +241,7 @@ public final class SettingsStore {
         if let value = overrides.panelFontFamily { schema.panelFontFamily = value }
         if let value = overrides.panelFontSize { schema.panelFontSize = value }
         if let value = overrides.useMonospacedPanelFont { schema.useMonospacedPanelFont = value }
+        if let value = overrides.themeRaw { schema.themeRaw = value }
         if let value = overrides.confirmDelete { schema.confirmDelete = value }
         if let value = overrides.deleteConfirmThreshold { schema.deleteConfirmThreshold = value }
         if let value = overrides.textEditorPath { schema.textEditorPath = value }

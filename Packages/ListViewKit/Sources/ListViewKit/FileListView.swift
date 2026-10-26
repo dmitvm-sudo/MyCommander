@@ -116,6 +116,7 @@ public final class FileListView: NSView {
         tableView.usesAlternatingRowBackgroundColors = true
         tableView.allowsMultipleSelection = true
         tableView.allowsEmptySelection = true
+        defaultTableBackground = tableView.backgroundColor
 
         nameColumn.title = String(localized: "column.name")
         sizeColumn.title = String(localized: "column.size")
@@ -515,6 +516,37 @@ public final class FileListView: NSView {
     public func applyPanelFont(_ font: NSFont?) {
         guard panelFont != font else { return }
         panelFont = font
+        reloadVisibleRows()
+    }
+
+    // MARK: themes (F-23 частично — T-33; 06 §6.9 «Уточнение T-33»)
+
+    /// nil = system surface (light/dark are appearance-level, the App sets
+    /// NSApp.appearance itself); non-nil = the NC-blue-style token skin.
+    private var theme: PanelTheme?
+    /// The table's untouched default (captured before any theming) — the
+    /// nil-restore target.
+    private var defaultTableBackground: NSColor = .textBackgroundColor
+
+    /// Live theme switch (acceptance F-23 «без рестарта»): NSTableView cannot
+    /// be recolored for alternation directly — the concrete colors ride
+    /// `didAdd`-row backgrounds (usesAlternatingRowBackgroundColors stays on
+    /// so row views keep feeding the callback); nil restores the captured
+    /// default.
+    public func applyTheme(_ tokens: PanelTheme?) {
+        guard tokens != theme else { return }
+        theme = tokens
+        if let tokens {
+            tableView.backgroundColor = tokens.rowBackground
+            tableView.usesAlternatingRowBackgroundColors = true
+        } else {
+            tableView.backgroundColor = defaultTableBackground
+            tableView.usesAlternatingRowBackgroundColors = true   // system colors
+        }
+        reloadVisibleRows()
+    }
+
+    private func reloadVisibleRows() {
         let visibleRows = Range(tableView.rows(in: tableView.visibleRect)).map { IndexSet(integersIn: $0) } ?? IndexSet()
         let allColumns = IndexSet(integersIn: 0 ..< max(tableView.numberOfColumns, 1))
         tableView.reloadData(forRowIndexes: visibleRows, columnIndexes: allColumns)
@@ -530,9 +562,20 @@ extension FileListView: NSTableViewDataSource, NSTableViewDelegate {
 
     public func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
         guard let item = viewModel.item(atVisibleIndex: row), let column = tableColumn else { return nil }
+        func adoptTheme(_ themeColors: (text: NSColor, secondary: NSColor)?) -> (NSTableCellView) -> Void {
+            return { cell in
+                if let cell = cell as? NameCell {
+                    cell.applyThemeColors(text: themeColors?.text, secondary: themeColors?.secondary)
+                } else if let cell = cell as? MetaCell {
+                    cell.applyThemeColor(themeColors?.secondary)
+                }
+            }
+        }
+        let themeCall = adoptTheme(self.theme.map { ($0.rowText, $0.rowSecondaryText) })
         if column.identifier == NSUserInterfaceItemIdentifier(ColumnID.name.rawValue) {
             let cell = tableView.makeView(withIdentifier: NameCell.reuseIdentifier, owner: self) as? NameCell
                 ?? NameCell()
+            themeCall(cell)   // the token is stored first — render consults it
             cell.render(item: item, icon: iconCache.icon(for: item))
             cell.applyPanelFont(panelFont)
             return cell
@@ -542,6 +585,7 @@ extension FileListView: NSTableViewDataSource, NSTableViewDelegate {
                 ?? MetaCell()
             cell.render(text: MetaCell.sizeText(of: item), alignment: .right)
             cell.applyPanelFont(panelFont)
+            themeCall(cell)
             return cell
         }
         if column.identifier == NSUserInterfaceItemIdentifier(ColumnID.dateModified.rawValue) {
@@ -549,6 +593,7 @@ extension FileListView: NSTableViewDataSource, NSTableViewDelegate {
                 ?? MetaCell()
             cell.render(text: MetaCell.modifiedText(of: item), alignment: .left)
             cell.applyPanelFont(panelFont)
+            themeCall(cell)
             return cell
         }
         if column.identifier == NSUserInterfaceItemIdentifier(ColumnID.dateCreated.rawValue) {
@@ -556,6 +601,7 @@ extension FileListView: NSTableViewDataSource, NSTableViewDelegate {
                 ?? MetaCell()
             cell.render(text: MetaCell.createdText(of: item), alignment: .left)
             cell.applyPanelFont(panelFont)
+            themeCall(cell)
             return cell
         }
         if column.identifier == NSUserInterfaceItemIdentifier(ColumnID.kind.rawValue) {
@@ -563,6 +609,7 @@ extension FileListView: NSTableViewDataSource, NSTableViewDelegate {
                 ?? MetaCell()
             cell.render(text: MetaCell.kindText(of: item), alignment: .left)
             cell.applyPanelFont(panelFont)
+            themeCall(cell)
             return cell
         }
         if column.identifier == NSUserInterfaceItemIdentifier(ColumnID.tags.rawValue) {
@@ -570,6 +617,7 @@ extension FileListView: NSTableViewDataSource, NSTableViewDelegate {
                 ?? MetaCell()
             cell.render(text: MetaCell.tagsText(of: item), alignment: .left)
             cell.applyPanelFont(panelFont)
+            themeCall(cell)
             return cell
         }
         if column.identifier == NSUserInterfaceItemIdentifier(ColumnID.permissions.rawValue) {
@@ -577,6 +625,7 @@ extension FileListView: NSTableViewDataSource, NSTableViewDelegate {
                 ?? MetaCell()
             cell.render(text: MetaCell.permissionsText(of: item), alignment: .right)
             cell.applyPanelFont(panelFont)
+            themeCall(cell)
             return cell
         }
         if column.identifier == NSUserInterfaceItemIdentifier(ColumnID.owner.rawValue) {
@@ -584,6 +633,7 @@ extension FileListView: NSTableViewDataSource, NSTableViewDelegate {
                 ?? MetaCell()
             cell.render(text: MetaCell.ownerText(of: item), alignment: .left)
             cell.applyPanelFont(panelFont)
+            themeCall(cell)
             return cell
         }
         if column.identifier == NSUserInterfaceItemIdentifier("thumbnail") {
@@ -614,8 +664,18 @@ extension FileListView: NSTableViewDataSource, NSTableViewDelegate {
     ) -> (any NSPasteboardWriting)? {
         onPasteboardWriterForRow?(rowIndex)
     }
-}
 
+    /// Theme row painting (T-33 — 06 §6.9 «Уточнение T-33»): custom row
+    /// backgrounds when a theme is active — even rows = the solid background,
+    /// odd rows = the alternate (nil alternate solidifies the surface).
+    /// System rows stay untouched (theme == nil).
+    public func tableView(_ tableView: NSTableView, didAdd rowView: NSTableRowView, forRow rowIndex: Int) {
+        guard let theme else { return }
+        rowView.backgroundColor = (rowIndex % 2 == 1)
+            ? (theme.rowAlternate ?? theme.rowBackground)
+            : theme.rowBackground
+    }
+}
 // MARK: Drag destination (T-16 / F-18 — §6.1 v1)
 
 /// держится в `NSApp.currentEvent` (NSDraggingInfo не отдаёт событие).

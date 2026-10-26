@@ -20,6 +20,8 @@ final class NameCell: NSTableCellView {
     private let iconView = NSImageView()
     let textLabel = NSTextField(labelWithString: "")
     private let badgeLabel = NSTextField(labelWithString: "")
+    /// Theme color token (F-23 T-33): nil = system label colors.
+    private var themeTexts: (text: NSColor, secondary: NSColor)?
 
     init() {
         iconView.imageScaling = .scaleProportionallyDown
@@ -53,7 +55,9 @@ final class NameCell: NSTableCellView {
     func render(item: VFSItem, icon: NSImage?) {
         iconView.image = icon
         textLabel.stringValue = item.name
-        textLabel.textColor = item.attributes.isHidden ? .secondaryLabelColor : .labelColor
+        textLabel.textColor = item.attributes.isHidden
+            ? (themeTexts?.secondary ?? .secondaryLabelColor)
+            : (themeTexts?.text ?? .labelColor)
         var badge = ""
         if case .symlink = item.kind, badge.isEmpty { badge = String(localized: "cell.badge.symlink") }
         if item.attributes.isHidden { badge = String(localized: "cell.badge.hidden") }
@@ -64,6 +68,16 @@ final class NameCell: NSTableCellView {
     /// Settings live-apply (§6.9 v1, T-18): nil restores the default face.
     func applyPanelFont(_ font: NSFont?) {
         textLabel.font = font ?? NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
+    }
+
+    /// Theme token apply (F-23 T-33): nil = system label colors; consulted
+    /// again on every subsequent `render`.
+    func applyThemeColors(text: NSColor?, secondary: NSColor?) {
+        if let text, let secondary {
+            themeTexts = (text, secondary)
+        } else {
+            themeTexts = nil
+        }
     }
 }
 
@@ -90,6 +104,11 @@ final class MetaCell: NSTableCellView {
     /// Settings live-apply (§6.9 v1, T-18): nil restores the default face.
     func applyPanelFont(_ font: NSFont?) {
         textLabel.font = font ?? NSFont.systemFont(ofSize: 11)
+    }
+
+    /// Theme token apply (F-23 T-33): nil restores the system secondary color.
+    func applyThemeColor(_ color: NSColor?) {
+        textLabel.textColor = color ?? .secondaryLabelColor
     }
 
     required init?(coder: NSCoder) {

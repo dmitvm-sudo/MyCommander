@@ -225,3 +225,26 @@ extension SettingsStore {
     #expect(SettingsStore.sanitizedColumns([.size, .tags]) == [.name, .size, .tags])
     #expect(SettingsStore.sanitizedColumns([]) == [.name])
 }
+
+// MARK: T-33 (F-23 частично — 06 §6.9 «Уточнение T-33»): themeRaw.
+
+@MainActor
+@Test func stT33ThemeDefaultsAndRoundtrip() {
+    let store = stStore(nil)
+    #expect(store.settings.themeRaw == "system")
+    store.update { $0.themeRaw = "ncBlue" }
+    let reloaded = SettingsStore(url: store.settingsFileURL)
+    #expect(reloaded.settings.themeRaw == "ncBlue")
+}
+
+@MainActor
+@Test func stT33ThemeStoredRawAndResetRestores() {
+    let store = stStore("""
+    { "themeRaw": "dark" }
+    """)
+    #expect(store.settings.themeRaw == "dark")
+    store.update { $0.themeRaw = "absolutely-bogus" }
+    store.reset(.appearance)
+    #expect(store.settings.themeRaw == "system")
+    #expect(store.settings.panelFontSize == 13)   // font ride along too
+}

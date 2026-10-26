@@ -375,6 +375,29 @@ struct SettingsSchema: Codable, Sendable, Equatable {
   Перформанс-поверх сканирования нет: columns-настройка подаётся через
   существующий `onDidUpdate`, панели применяют диффом колонок.
 
+  *Уточнение T-33 (F-23 частично):* appearance получает `themeRaw: String`
+  («system» | «light» | «dark» | «ncBlue»; невалид хранится сырым — App мапит
+  в system; schemaVersion остаётся 1, additive). Семантика: **light/dark** =
+  `NSApp.appearance` (`NSAppearance(named: .aqua / .darkAqua)`, system = nil)
+  — все системные цвета настройками не трогаются; **ncBlue** = чистая NC-
+  классика поверхности LISTОВ панелей через LV-токены:
+  `PanelTheme` (rowBackground / rowAlternate? / rowText / rowSecondaryText;
+  статический preset `PanelTheme.ncBlueClassic` — сплошной синий фон,
+  белая/приглушённая вторичная надстрока), App мапит строку →
+  (NSApp.appearance, tokens?) и зовёт `FileListView.applyTheme(_:)` по каналу
+  `onDidUpdate` (живое переключение без рестарта — acceptance F-23).
+  LV-механика applyTheme: `alternatingRowBackgroundColors = [bg, alt]` +
+  `backgroundColor`; откат в nil → системный `.textBackgroundColor` и пустой
+  colors-массив; ячейки (NameCell/MetaCell) получают цветовой токен на каждом
+  `viewFor` (как шрифт), NameCell уважает hidden→secondary-цвет. Скиning-
+  границы v1: ncBlue красит ТОЛЬКО списки панелей — tab-chrome, диалоги,
+  Lister, ProgressWindow, терминал остаются системными (расширение — v1.x
+  с отдельной SDD-заметкой). **Шрифты**: family выбирается в окне настроек
+  (NSComboBox, editable; пустая строка = системное лицо) поверх существующего
+  `NSFont.wrappedPanelFont` (§6.9 T-18) — live apply через `applyPanelFont`;
+  валидация left как есть (NSFontManager отдаёт nil → дефолт-фолбэк).
+  Reset(.appearance) возвращает themeRaw тоже.
+
 - **KeymapStore**: профили (default TC-style / macOS-style / user), запись — `KeyCombo` (keyCode + modifiers), конфликты forbidden при сохранении;
 - **LocationsStore** (закладки/Hotlist/история per-tab; hot-Slots 9);
 - **ConnectionStore** + Keychain (kSecClassGenericPassword, service `MyCommander.connection.<id>`) — никогда не в JSON;
