@@ -2,6 +2,7 @@
 
 import AppKit
 import DomainKit
+import EnginesKit
 import FileOpsKit
 import ListViewKit
 import ServicesKit
@@ -507,6 +508,12 @@ final class PanelsCoordinator: NSObject {
         // active panel; the dialog builds ONE .move plan (undo rides F-6).
         router.register(.multiRename) { [weak self] in
             self?.beginMultiRename()
+        }
+
+        // F-15 (T-29): compare the ACTIVE pane against the OPPOSITE pane
+        // (⌘B, 07 map); dry-run dialog, execution through the unified queue.
+        router.register(.comparePanels) { [weak self] in
+            self?.beginComparePanels()
         }
 
         // F-6 (T-20): ⌘Z — undo the newest journal record through the same
@@ -1351,6 +1358,92 @@ final class PanelsCoordinator: NSObject {
             _ = id
             for await _ in stream {}
             await viewModel.reload()
+        }
+    }
+
+    /// F-15 (T-29): compare the active pane (A) against the opposite pane
+    /// (B). The engine diff runs off-main; the dialog is the DRY RUN (script
+    /// table + confirmation before Apply); execution converts the script
+    /// into TransferPlanner plans riding the unified queue with per-run
+    /// panel pairs (05 §5.6 уточнение T-27). Copies first, mirror deletes
+    /// after; both panels reload when the queue drains.
+    private func beginComparePanels() {
+        guard let paneA = activePane, let paneB = oppositePane else { return }
+        let viewModelA = paneA.fileListView.viewModel
+        let viewModelB = paneB.fileListView.viewModel
+        guard let pathA = viewModelA.path, let pathB = viewModelB.path else { return }
+        let vfsA = viewModelA.source
+        let vfsB = viewModelB.source
+        let nameA = pathA.components.last ?? "/"
+        let nameB = pathB.components.last ?? "/"
+
+        Task { [weak self] in
+            guard let self else { return }
+            let report: SyncReport
+            do {
+                report = try await SyncReporter.compare(a: vfsA, at: pathA, b: vfsB, at: pathB, mode: .metadata)
+            } catch {
+                return   // status-line surfacing arrives with the T-12 UX pass
+            }
+            guard let actions = SyncDialog.run(report: report, nameA: nameA, nameB: nameB), !actions.isEmpty else { return }
+
+            let copyActions = actions.filter { $0.kind == .copyAToB || $0.kind == .copyBToA }
+            let deleteActions = actions.filter { $0.kind == .deleteInA || $0.kind == .deleteInB }
+            guard !copyActions.isEmpty || !deleteActions.isEmpty else { return }
+
+            // Copies: one plan per direction (planner mkdir -p covers nested
+            // targets, T-11); sync semantics = overwrite, covered by the
+            // dialog's confirmation.
+            if !copyActions.isEmpty {
+                let isAToB = copyActions[0].kind == .copyAToB
+                let (originRoot, originVFS, targetRoot, targetVFS) = isAToB
+                    ? (pathA, vfsA, pathB, vfsB)
+                    : (pathB, vfsB, pathA, vfsA)
+                let sources = copyActions.map { action in
+                    VFSPath(root: originRoot.root, components: originRoot.components + action.relativeComponents)
+                }
+                do {
+                    let plan = try await TransferPlanner.planCopy(
+                        sources: sources, into: targetRoot, source: originVFS, destination: targetVFS
+                    )
+                    let (id, stream) = await self.operationExecutor.enqueue(
+                        plan,
+                        policy: ConflictPolicy(defaultResolution: .overwrite),
+                        source: originVFS,
+                        destination: targetVFS
+                    )
+                    _ = id
+                    for await _ in stream {}
+                } catch {
+                    return
+                }
+            }
+
+            // Mirror deletes: the extras on the RECEIVING side (trash-safe
+            // deleteToTrash default, F-5).
+            if !deleteActions.isEmpty {
+                let isInB = deleteActions[0].kind == .deleteInB
+                let (targetRoot, targetVFS) = isInB ? (pathB, vfsB) : (pathA, vfsA)
+                let sources = deleteActions.map { action in
+                    VFSPath(root: targetRoot.root, components: targetRoot.components + action.relativeComponents)
+                }
+                do {
+                    let plan = try await TransferPlanner.planDelete(sources: sources, source: targetVFS)
+                    let (id, stream) = await self.operationExecutor.enqueue(
+                        plan,
+                        policy: ConflictPolicy(),
+                        source: targetVFS,
+                        destination: targetVFS
+                    )
+                    _ = id
+                    for await _ in stream {}
+                } catch {
+                    return
+                }
+            }
+
+            await viewModelA.reload()
+            await viewModelB.reload()
         }
     }
 

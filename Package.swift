@@ -66,7 +66,10 @@ func dependency(named name: String) -> Target.Dependency {
 
 let libraries: [Target] = modules.map { module in
     let dependencies = (moduleDependencyNames[module.name] ?? []).map(dependency(named:))
-    return Target.target(name: module.name, dependencies: dependencies, path: "\(module.path)/Sources/\(module.name)")
+    // T-29: HashCache uses the SYSTEM sqlite3 (no third-party dependency →
+    // no NOTICE entry).
+    let linkerSettings: [LinkerSetting]? = module.name == "EnginesKit" ? [.linkedLibrary("sqlite3")] : nil
+    return Target.target(name: module.name, dependencies: dependencies, path: "\(module.path)/Sources/\(module.name)", linkerSettings: linkerSettings)
 }
 
 let testTargets: [Target] = modules.map { module in

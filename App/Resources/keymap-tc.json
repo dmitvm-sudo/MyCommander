@@ -610,6 +610,16 @@
           "shift"
         ]
       }
+    },
+    {
+      "command": "comparePanels",
+      "context": "panelList",
+      "combo": {
+        "keyCode": 11,
+        "modifiers": [
+          "command"
+        ]
+      }
     }
   ]
 }

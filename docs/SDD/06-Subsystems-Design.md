@@ -202,6 +202,31 @@ cancellation на границах чанков — `SftpByteStream.readChunk`/
   (07 карта), tc-профиль ⇧F2.
 - **SyncReporter** (F-15): сравнение двух деревьев по (name, size, mtime) или hash (parallel workers ≤ 4, sqlite-кэш hash) → матрица only-A/only-B/diff/equal → action-script (copy L→R / R→L / mirror (delete) с dry-run по умолчанию) → исполнение через TransferQueue.
 
+  *Уточнение T-29 (F-15 v1):* **SyncReporter.compare(a:at:b:at:mode:cache:)**
+  — рекурсивный обход ОБОИХ деревьев (`listDirectory` вниз от корней, стороны
+  параллельно; хэширование — пул workers ≤ 4) → карта по ОТНОСИТЕЛЬНОМУ пути
+  (slash-join компонентов) → матрица `onlyA / onlyB / differing / equal`:
+  для каталогов достаточно наличия с обеих сторон (state = equal; содержимое
+  считается по их файлам), расхождение типа (каталог vs файл) = `differing`.
+  Режимы: `.metadata` — size точно, mtime с допуском 1 с (cross-filesystem
+  точность), при `nil`-mtime — только size; `.content` — дополнительно
+  SHA-256 стримом по `ByteStream` для файлов, РАВНЫХ по метаданным (по
+  метаданным differing не хэшируется). **HashCache** — системный sqlite3
+  (без сторонних зависимостей), ключ `instanceID.specID + "/" + path`,
+  инваллидация: не совпали mtime/size → пересчёт и перезапись. **Action
+  script**: `direction: .aToB / .bToA` + `mirror: Bool`; copy = onlyX +
+  differing (каталог целиком — потомки в скрипт не дублируются), mirror
+  добавляет delete лишнего на стороне приёмника (`deleteInB` при aToB,
+  `deleteInA` при bToA); equal — без действий. Dry-run по умолчанию:
+  диалог показывает матрицу и скрипт (таблица «действие → путь» = лог,
+  F-15 acceptance); Apply — только после подтверждающего NSAlert.
+  Исполнение: App строит планы через `TransferPlanner` (mkdir -p уже в
+  планере, T-11) и ведёт через unified queue с per-run парами панелей
+  (05 §5.6 уточнение T-27); policy copy = `.overwrite` (sync-семантика,
+  покрыта подтверждением). Бюджет: дифф 100k записей ≤ 3 с (perf-тест на
+  фейковом VFS). Диалог `ListViewKit/SyncDialog.swift`; команда
+  `CommandID.comparePanels` — ⌘B (07 карта).
+
 ## 6.7 Lister (F-8)
 
 - Окно `ListerWindow`: non-blocking (можно листать панель? main); открытый файл — `ByteStream` окно 8 MB + seek.

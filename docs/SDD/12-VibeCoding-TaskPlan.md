@@ -243,6 +243,46 @@ _(этот слот оставлен пустым намеренно: нумер
   выделения, НЕ сортировка (в тестах детерминированный порядок выборки).
   (5) Гейты: build 0 warnings; Debug ×2 + Release — 302 зелёных; license-check OK.
 ### T-29. SyncReporter + dry-run UI (F-15)
+- **Готово:** SyncReporter (дифф-матрица + action-script), HashCache (sqlite), SyncDialog, команда ⌘B; исполнение через unified queue.
+- **Уточнение (по ходу реализации T-29):** (1) SDD раньше кода: `06` §6.6
+  уточнение T-29 — SyncReporter.compare(a:at:b:at:mode:cache:) — рекурсивный
+  обход обоих деревьев (стороны параллельно; хэширование — пул workers ≤ 4),
+  карта по ОТНОСИТЕЛЬНОМУ пути, матрица onlyA/onlyB/differing/equal; каталоги:
+  наличие с обеих сторон = equal (расхождение типа = differing); режимы
+  `.metadata` (size точно, mtime с допуском 1 с; nil-mtime → только size) и
+  `.content` (SHA-256 стримом только для metadata-equal файлов — differing по
+  метаданным не хэшируется); HashCache — системный sqlite3, ключ
+  instance+path, инваллидация по mtime/size; action-script: direction
+  aToB/bToA + mirror (delete лишнего на стороне ПРИЁМНИКА), equal без
+  действий, каталог в скрипте покрывает поддерево (потомки не дублируются);
+  dry-run по умолчанию: таблица «действие → путь» = лог, Apply только после
+  подтверждающего NSAlert; исполнение — App строит планы через
+  TransferPlanner (mkdir -p уже в планере, T-11) и ведёт через unified queue
+  с per-run парами панелей (05 §5.6 T-27), policy copy = .overwrite
+  (sync-семантика, покрыта подтверждением). Бюджет: дифф 100k записей ≤ 3 с.
+  (2) Код: `EnginesKit/SyncReporter.swift` (pure), `EnginesKit/HashCache.swift`
+  (sqlite3 через системный модуль SQLite3; SQLITE_TRANSIENT не экспонируется
+  оверлеем → unsafeBitCast(OpaquePointer(bitPattern: -1)) локально),
+  `ListViewKit/SyncDialog.swift` (direction popup + mirror checkbox, скрипт
+  пересчитывается live, delete-строки красным, Apply = NSAlert-подтверждение),
+  App `beginComparePanels` (дифф off-main → диалог → копии одним планом
+  per-direction, затем mirror-удаления, reload обеих панелей),
+  MenuBuilder `menu.comparePanels`, keymap ⌘B в обоих профилях (конфликт-скан
+  чист: 65/67 entries). Package.swift: EnginesKit linkerSettings
+  `.linkedLibrary("sqlite3")` — СИСТЕМНАЯ библиотека (как и CryptoKit), НЕ
+  сторонняя зависимость → NOTICE не трогается (правило N-10). (3) Тесты
+  ×11 (`EnginesKitTests/SyncReporterTests.swift` + мини-фейк SyncFakeVFS):
+  identical/disjoint, size+mtime (допуск 1 с), type-mismatch, content ловит
+  равные метаданные/разные байты, кэш (второй проход не хэширует — счётчик
+  openRead), направление скрипта, mirror-удаления (поддерево каталога не
+  дублируется), потомки скопированного каталога пропускаются, инваллидация
+  кэша по mtime/size, perf 100k ≤ 3 с (замер 1.87 с). (4) Уроки: switch по
+  кортежам опционалов — паттерны `(.some, .none)` (binding `let a?` даёт
+  warning «never used»); фейк-VFS для EnginesKitTests — 9 методов протокола
+  VFS, счётчик openRead под NSLock (worker pool пишет из нескольких тасок);
+  ожидания порядка скрипта = отсортированный порядок записей отчёта.
+  (5) Гейты: build 0 warnings; Debug ×2 + Release — 313 зелёных;
+  license-check OK.
 ### T-30. SearchEngine + результаты-виртуальная папка (F-16)
 ### T-31. TerminalPane встроенный (F-17): SwiftTerm, ⌃`, auto-cd, вставка путей
 ### T-32. Настройки полные + custom columns + thumbnails (F-21, F-4)
