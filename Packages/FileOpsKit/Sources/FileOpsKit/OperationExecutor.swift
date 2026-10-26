@@ -68,6 +68,8 @@ public final class OperationGate: Sendable {
 /// source/destination VFS pair (both panels of MyCommander share the local
 /// VFS; per-adapter executors arrive with the VFSRegistry task).
 public actor OperationExecutor: OperationExecutorProtocol {
+    /// Workspace defaults (T-11/T-16): the panels' primary local workspace.
+    /// Every enqueue may override the pair per-run (T-27 unified queue).
     private let source: any VFS
     private let destination: any VFS
     private let journal: JournalStorage
@@ -89,6 +91,11 @@ public actor OperationExecutor: OperationExecutorProtocol {
         let continuation: AsyncStream<TransferEvent>.Continuation
         let gate = OperationGate()
         let totalBytes: Int64
+        /// T-27 (unified queue): the VFS pair OF THIS OPERATION (per-run), not
+        /// the executor-init workspace defaults (docs/SDD/05 §5.6 уточнение
+        /// T-27) — local / archive / SFTP panels ride the ONE executor.
+        let source: any VFS
+        let destination: any VFS
         var completedBytes: Int64 = 0
         var itemBytes: [Int: Int64] = [:]
         var summary = Summary()
@@ -99,10 +106,18 @@ public actor OperationExecutor: OperationExecutorProtocol {
         /// exists» for that directory's own item.
         var runtimeConflicts: [VFSPath: Conflict] = [:]
 
-        init(id: OperationID, continuation: AsyncStream<TransferEvent>.Continuation, totalBytes: Int64) {
+        init(
+            id: OperationID,
+            continuation: AsyncStream<TransferEvent>.Continuation,
+            totalBytes: Int64,
+            source: any VFS,
+            destination: any VFS
+        ) {
             self.id = id
             self.continuation = continuation
             self.totalBytes = totalBytes
+            self.source = source
+            self.destination = destination
         }
     }
 
@@ -133,13 +148,30 @@ public actor OperationExecutor: OperationExecutorProtocol {
     // MARK: OperationExecutorProtocol
 
     public func enqueue(_ plan: TransferPlan, policy: ConflictPolicy) async -> (id: OperationID, events: AsyncStream<TransferEvent>) {
+        await enqueue(plan, policy: policy, source: nil, destination: nil)
+    }
+
+    /// T-27 (docs/SDD/05 §5.6 уточнение): the VFS pair OF THE OPERATION —
+    /// `nil` falls back to the init workspace defaults.
+    public func enqueue(
+        _ plan: TransferPlan,
+        policy: ConflictPolicy,
+        source: (any VFS)?,
+        destination: (any VFS)?
+    ) async -> (id: OperationID, events: AsyncStream<TransferEvent>) {
         let id = OperationID()
         var continuationRef: AsyncStream<TransferEvent>.Continuation!
         let stream = AsyncStream<TransferEvent> { continuation in
             continuationRef = continuation
         }
         let totalBytes = plan.items.reduce(0) { $0 + ($1.item.attributes.size ?? 0) }
-        let run = Run(id: id, continuation: continuationRef, totalBytes: totalBytes)
+        let run = Run(
+            id: id,
+            continuation: continuationRef,
+            totalBytes: totalBytes,
+            source: source ?? self.source,
+            destination: destination ?? self.destination
+        )
         runs[id] = run
         run.task = Task {
             await perform(plan, policy: policy, run: run)
@@ -210,7 +242,7 @@ public actor OperationExecutor: OperationExecutorProtocol {
         // (06 §6.2 «runtime re-check still happens» — targets may appear
         // between planning and execution).
         for item in plan.items {
-            if let existing = try? await destination.metadata(of: item.target) {
+            if let existing = try? await run.destination.metadata(of: item.target) {
                 run.runtimeConflicts[item.target] = Conflict(
                     source: item.source,
                     target: item.target,
@@ -252,7 +284,7 @@ public actor OperationExecutor: OperationExecutorProtocol {
         // Same single-pass runtime re-check as the copy path (T-12).
         for index in topLevel {
             let item = plan.items[index]
-            if let existing = try? await destination.metadata(of: item.target) {
+            if let existing = try? await run.destination.metadata(of: item.target) {
                 run.runtimeConflicts[item.target] = Conflict(
                     source: item.source,
                     target: item.target,
@@ -289,8 +321,8 @@ public actor OperationExecutor: OperationExecutorProtocol {
         do {
             let outcome = try await MoveTransaction.run(
                 transfer,
-                source: source,
-                destination: destination,
+                source: run.source,
+                destination: run.destination,
                 gate: run.gate,
                 progress: { [weak self] fraction, bytes in
                     await self?.recordProgress(runID, index: index, fraction: fraction, bytes: bytes)
@@ -352,8 +384,8 @@ public actor OperationExecutor: OperationExecutorProtocol {
             let bytes = try await ZipPackTask.pack(
                 target: transfer.target,
                 sources: plan.items,
-                source: source,
-                destination: destination,
+                source: run.source,
+                destination: run.destination,
                 compressionMethod: method,
                 gate: run.gate,
                 progress: { [weak self] fraction, consumedBytes in
@@ -413,7 +445,7 @@ public actor OperationExecutor: OperationExecutorProtocol {
         do {
             let outcome = try await DeleteTransaction.run(
                 transfer,
-                source: source,
+                source: run.source,
                 toTrash: deleteToTrash,
                 gate: run.gate,
                 progress: { [weak self] _, bytes in
@@ -472,7 +504,7 @@ public actor OperationExecutor: OperationExecutorProtocol {
             ?? run.runtimeConflicts[planned.target]
         if conflict == nil, plan.op == .delete {
             // The source may have vanished between planning and execution.
-            if (try? await source.metadata(of: planned.source)) == nil {
+            if (try? await run.source.metadata(of: planned.source)) == nil {
                 conflict = Conflict(source: planned.source, target: planned.target, kind: .sourceVanished)
             }
         }
@@ -488,7 +520,7 @@ public actor OperationExecutor: OperationExecutorProtocol {
             case .targetExists:
                 switch policy.resolve(for: transfer.target) {
                 case .overwrite:
-                    do { try await destination.delete([transfer.target], toTrash: false) }
+                    do { try await run.destination.delete([transfer.target], toTrash: false) }
                     catch { await failItem(run, index: index, error: normalize(error)); return nil }
                 case .skip:
                     run.summary.startedItems += 1
@@ -496,7 +528,7 @@ public actor OperationExecutor: OperationExecutorProtocol {
                     emit(run, .itemDone)
                     return nil
                 case .keepBoth:
-                    transfer.target = await TransferPlanner.uniqueTargetName(for: transfer.target, in: destination)
+                    transfer.target = await TransferPlanner.uniqueTargetName(for: transfer.target, in: run.destination)
                 case .cancel:
                     run.summary.canceled = true
                     await cancel(run.id)
@@ -558,8 +590,8 @@ public actor OperationExecutor: OperationExecutorProtocol {
         do {
             try await CopyTransaction.run(
                 transfer,
-                source: source,
-                destination: destination,
+                source: run.source,
+                destination: run.destination,
                 preference: transportPreference,
                 gate: run.gate,
                 progress: { [weak self] fraction, bytes in

@@ -42,7 +42,7 @@ let moduleDependencyNames: [String: [String]] = [
 /// реальный листинг через LocalVFS/InMemoryVFS без подключения VFSKit к библиотеке).
 let testDependencyNames: [String: [String]] = [
     "ListViewKit": ["VFSKit"],
-    "VFSKit": ["NIOEmbedded", "NIOPosix"],   // T-24: EmbeddedEventLoop (promise-тесты); T-25: NIOPosix (cable-pull proxy)
+    "VFSKit": ["NIOEmbedded", "NIOPosix", "FileOpsKit"],   // T-24: EmbeddedEventLoop (promise-тесты); T-25: NIOPosix (cable-pull proxy); T-27: FileOpsKit (UnifiedQueueIntegrationTests — planner+executor против Local/Sftp/ArchiveVFS)
 ]   // NIOSSH VFSKitTests получает через moduleDependencyNames["VFSKit"] (одно ребро — иначе SPM duplicate-product warning)
 
 /// T-23: byName-зависимость «NIOConcurrencyHelpers» (продукт транзитивного до

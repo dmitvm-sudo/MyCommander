@@ -173,6 +173,34 @@ _(этот слот оставлен пустым намеренно: нумер
 
 ### T-27. M2 hardening
 - **Готово:** smoke 8.4 п.6–7; все VFS-операции через unified queue-путь; exit M2.
+- **Уточнение (по ходу реализации T-27):** (1) SDD раньше кода: `09` M2 exit п.1
+  уточнение — трактовка «все VFS-операции через один queue/conflicts-путь» =
+  transfer-класс (copy/move/delete/packZip/extract/undo-reversals) через ЕДИНЫЙ
+  OperationExecutor; mkdir — задокументированное исключение (§5.6 T-20); `08` §8.4
+  уточнение — автоматизируемые ядра п.6–7; **`05` §5.6 уточнение T-27 — КЛЮЧЕВАЯ
+  правка**: `enqueue(plan, policy, source:, destination:)` — **per-run VFS-пара**
+  (`nil` = init-дефолт workspace). Мотивация найдена НА ДЕЛЕ: App держит ОДИН
+  executor с workspace-парой из init — copy/delete из SFTP/архивной панели
+  физически исполнялись через workspace `LocalVFS` (delete → `sourceVanished` на
+  SFTP-пути, copy → byteStream по чужому VFS). Единый путь работает для ЛЮБЫХ
+  панелей только с per-run парой: все ветки (`executeItems`/`executeMove`/
+  `executeDelete`/`executePackZip`, runtime re-check, `resolveConflicts`) читают
+  пару из `Run`. (2) App: `executeTransfer`/`executePack` передают пару операции;
+  delete — пару панели; undo остаётся на workspace-дефолте (реверсалы F-6 v1 —
+  локальные). (3) Тесты ×4 (`UnifiedQueueIntegrationTests`, VFSKitTests +
+  test-dep FileOpsKit): allTransferClassesRideOneExecutor (copy→move→delete→packZip
+  одним executor'ом с per-run парами, journal = [packZip, delete, move, copy]);
+  localToSftpCopyAndBackThroughExecutor (upload+copy-back, live-сервер);
+  zipRoundTripThroughUnifiedPathSurvivesUnicodeNames (pack→ArchiveVFS→extract,
+  «Привет мир»/«emoji 🚀»/«каталог с ёлкой» — имена и байты целы);
+  sftpCopyPreservesUnicodeNames. (4) Уроки теста: два `LocalVFS(at:)` без явного
+  `instanceID` получают ОДИНАКОВЫЙ specID «unknown» → same-VFS-семантика ложно
+  (copy в тот же каталог → keepBoth `a(1).txt`, move в чужой каталог лёг по
+  source-корню) — в тестах явные `instanceID`; `packZip` summary = 1 succeeded
+  (ОДИН артефакт, не per-source); `uqTempRoot` обязан создавать каталог (планнер
+  статирует цель). (5) Гейты: Debug ×2 + Release — 288 зелёных, license-check OK.
+  (6) Ручной остаток smoke п.6–7 (UI-диалоги, «потушить Wi-Fi» на живом сервере) —
+  владелец при выпуске M2-сборки; exit M2 фиксируется этим блоком.
 
 ## M3 — Power tools
 

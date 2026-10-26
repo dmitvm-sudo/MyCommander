@@ -172,9 +172,21 @@ struct TransferEvent: Sendable {
 
 actor OperationExecutorProtocol {
     func enqueue(_ plan: TransferPlan, policy: ConflictPolicy) async -> (id: OperationID, events: AsyncStream<TransferEvent>)
+    func enqueue(_ plan: TransferPlan, policy: ConflictPolicy, source: (any VFS)?, destination: (any VFS)?) async -> (id: OperationID, events: AsyncStream<TransferEvent>)
     func pause(_ id: OperationID) / resume / cancel
 }
 ```
+
+*Уточнение T-27 (M2 exit «unified queue/conflicts-путь»):* `enqueue` получает
+**per-run** `source`/`destination` (опционально; `nil` = init-дефолт — workspace
+`LocalVFS`). Мотивация: один экземпляр executor'а на приложение обслуживает
+операции ЛЮБЫХ панелей (local / archive-interlude / SFTP); транзакции
+(`CopyTransaction`/`MoveTransaction`/`DeleteTransaction`/`ZipPackTask`) и
+runtime-реконфликт (`resolveConflicts`) исполняются строго по VFS паре
+конкретной операции, а не по init-паре — иначе copy/delete из сетевой/архивной
+панели физически ушли бы в workspace `LocalVFS`. Все ветки executor'а
+(`executeItems`/`executeMove`/`executeDelete`/`executePackZip`, runtime
+re-check, undo) читают пару из `Run`.
 
 **Journal (undo):**
 ```swift

@@ -18,6 +18,18 @@
 **Scope:** F-6, F-11, F-12 (zip read/write; tar/gz/xz/bzip2 read), F-13 (SFTP + Connection Manager); capability-инварианты VFS на панелях (без watch-фич для сетевых).
 **Exit:**
 1. Smoke 8.4 п.6–7; все VFS-операции идут через один и тот же queue/conflicts-путь.
+   *Уточнение T-27 (трактовка критерия):* «все VFS-операции» = **transfer-класс
+   мутаций** — copy / move / delete / packZip / extract (копирование из
+   archive-интерлюдии) / undo-reversals — все идут через ЕДИНЫЙ `OperationExecutor`
+   (queue + conflicts + journal, один экземпляр на приложение). `mkdir` —
+   задокументированное исключение по контракту §5.6 (T-20: mkdir реверсируется
+   напрямую через JournalRecord без transfer engine); rename в v1 отсутствует
+   (F6 = move). Доказательство — интеграционная сюита `UnifiedQueueIntegrationTests`
+   (один executor прогоняет copy→move→delete→packZip, journal содержит все op-ы;
+   cross-VFS Local↔SFTP через planCopy+executor; zip round-trip RU/emoji через
+   pack→ArchiveVFS→extract тем же путём). Smoke 8.4 п.6–7: автоматизируемое ядро —
+   эти тесты (08 §8.4 уточнение T-27); ручная часть (UI-прогон, «потушить Wi-Fi»
+   на живом сервере) — владелец при выпуске M2-сборки.
 2. SFTP: reconnect/backoff устойчив (ручной сценарий «перерубить сеть»); ключи хостов с pinning.
 3. Архивы: round-trip тесты зелёные; path-traversal заблокирован.
 4. Undo F-6 работает для rename/mkdir/move/trash.

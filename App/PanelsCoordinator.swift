@@ -1154,9 +1154,14 @@ final class PanelsCoordinator: NSObject {
                 guard let chosen = ConflictDialogController.run(rows: rows) else { return }
                 policy = chosen
             }
+            // T-27 (unified queue): the operation rides the ONE executor with
+            // ITS OWN VFS pair (05 §5.6 уточнение T-27) — archive/SFTP panels
+            // included.
             let (id, stream) = await operationExecutor.enqueue(
                 plan,
-                policy: policy
+                policy: policy,
+                source: source,
+                destination: destination
             )
             showProgress(id: id, operation: stream, itemCount: plan.items.count)
         } catch let error as MCError {
@@ -1266,7 +1271,13 @@ final class PanelsCoordinator: NSObject {
             do {
                 let plan = try await TransferPlanner.planDelete(sources: sources, source: viewModel.source)
                 guard !plan.items.isEmpty else { return }
-                let (id, stream) = await operationExecutor.enqueue(plan, policy: ConflictPolicy())
+                // T-27: delete rides the unified queue with the panel's VFS.
+                let (id, stream) = await operationExecutor.enqueue(
+                    plan,
+                    policy: ConflictPolicy(),
+                    source: viewModel.source,
+                    destination: viewModel.source
+                )
                 showProgress(id: id, operation: stream, itemCount: plan.items.count)
             } catch let error as MCError {
                 _ = error   // status-line surfacing arrives with T-12 UX pass

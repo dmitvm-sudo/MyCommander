@@ -51,6 +51,16 @@
 9. Terminal ⌃\`: cd-след patrimonio, vim/tmux работают, закрытие с задачами — подтверждение.
 10. Обновление через Sparkle: старая версия → новая без слома settings (миграции).
 
+*Уточнение T-27 (автоматизируемое ядро п.6–7):* п.6 — zip round-trip с RU/emoji
+именами через панельный путь = `UnifiedQueueIntegrationTests
+.zipRoundTripThroughUnifiedPathSurvivesUnicodeNames` (VFSKitTests: pack →
+ArchiveVFS-mount → extract через planner+executor). Панель-UI-часть (диалоги Pack)
+остаётся ручной. п.7 — browse/copy/copy-назад SFTP = `localToSftpCopy…` /
+`sftpCopyPreservesUnicodeNames` (планнер+executor, live in-process сервер, 06 §6.5);
+reconnect после разрыва сети = `SftpRobustnessTests.liveCablePull…` (T-25) — честная
+симуляция обрыва через TCP-прокси. Ручной остаток п.7: реальный внешний сервер +
+«потушить Wi-Fi» (нельзя автоматизировать честно в CI).
+
 ## 8.5 Performance-бюджеты в CI (fail build при регрессе)
 
 | Метрика | Бюджет | Фиксчура |
