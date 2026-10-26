@@ -25,11 +25,14 @@
 | apple/swift-atomics | Apache-2.0 | транзитивная dep swift-nio | M2 (T-23) |
 | apple/swift-collections | Apache-2.0 | транзитивная dep swift-nio | M2 (T-23) |
 | apple/swift-system | Apache-2.0 | транзитивная dep swift-nio | M2 (T-23) |
+| apple/swift-argument-parser | Apache-2.0 | транзитивная dep SwiftTerm (CLI-парсер) | M3 (T-31) |
+| tayloraswift/swift-png | Apache-2.0 | транзитивная dep SwiftTerm | M3 (T-31) |
+| rarestype/h | Apache-2.0 | транзитивная dep SwiftTerm | M3 (T-31) |
+| migueldeicaza/SwiftTerm | MIT | встроенный PTY-terminal (F-17: SwiftTerm-хост, resize/copy/paste, tmux/ssh/vim) | M3 (T-31) |
 
 ## Запланировано (лицензию подтвердить при добавлении)
 | Пакет | Лицензия | Назначение | Появится в |
 |---|---|---|---|
-| migueldeicaza/SwiftTerm | MIT | встроенный terminal (F-17) | M3 (T-31) |
 | Sparkle | MIT | автообновления | v1.0 (T-37) |
 
 ## Явно исключено

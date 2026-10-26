@@ -319,6 +319,51 @@ _(этот слот оставлен пустым намеренно: нумер
   («beta payload» = 12). (5) Гейты: build 0 warnings; Debug ×2 + Release —
   328 зелёных; license-check OK.
 ### T-31. TerminalPane встроенный (F-17): SwiftTerm, ⌃`, auto-cd, вставка путей
+- **Готово:** TerminalPane (NSView-хост SwiftTerm `LocalProcessTerminalView`,
+  login-zsh, кнопки CD/Вставить в верхней полоске, path-line), TerminalPathSeeder
+  (чистое POSIX-экранирование — unit), ⌃` toggle + ⌃⇧V pastePath, авто-CD
+  (debounce 150 мс), MenuBuilder/keymap обеих профилей, kill-shell на
+  windowWillClose.
+- **Уточнение (по ходу реализации T-31):** (1) SDD раньше кода: `06` §6.8
+  уточнение T-31 — pane создаётся по требованию (первый ⌃`), child
+  `/bin/zsh -l` стартует В нужном cwd (`startProcess(currentDirectory:)` —
+  welcome-cd не нужен), детача окна стартует его ровно раз
+  (`viewDidMoveToWindow`); child переживает скрытие панели, kill при закрытии
+  окна БЕЗ подтверждения (v1). TerminalKitTests покрывает ТОЛЬКО сидер —
+  SwiftTerm UI headless хрупко; ручной smoke (⌃` старт < 200 мс; tmux/vim
+  без артефактов; cd-follow; вставка путей) — T-34 hardening (как в T-27).
+  (2) LV-хук: `onPathChanged` каждой tab-VM занят PanelTabsView (history
+  вкладок) — подписка авто-CD идёт через `PanelTabList.onPathVisited` (он и
+  так служит recent-записям): оба потребителя сворачиваются в ОДИН closure
+  координатора; фильтр корректности — cd летит только по пути, реально
+  отображённому в одной из панелей (фоновая вкладка листит свой каталог БЕЗ
+  cd терминала), re-check в момент срабатывания debounce; интерлюдии
+  (root.kind ≠ localDisk) пропускаются. (3) Слои: машинерия терминала в
+  App (PanelsCoordinator: toggleTerminal/pastePath/shutdownTerminal,
+  lazy-pane + store `lastPanelPosix`), MainWindowController — только
+  layout-сегмент (высота 0 → 40 % через пару constraints zero/open,
+  isHidden-защёлка), TerminalKit — только SwiftTerm-хост + сидер (PTY
+  получает строки ИСКЛЮЧИТЕЛЬНО из TerminalPathSeeder). pastePath: курсорный
+  элемент активной панели, LocalVFS-only — честная ошибка в консоль для
+  не-локальных источников. (4) **ld-ворнинги от dep-манифеста:** SwiftTerm
+  заявляет сам `.macOS(.v11)` — его объекты драгают эффективный минимум
+  финальных бинарников до 11.0, ld сверяет с системными swift-dylib (13.0)
+  → «building for macOS-11.0, but linking … newer version 13.0» ×8 на
+  КАЖДУЮ холодную релинковку. Решение: linkerSettings таргета TerminalKit —
+  `.unsafeFlags(["-Xlinker", "-platform_version", "-Xlinker", "macos",
+  "-Xlinker", "14.0", "-Xlinker", "14.0"])` (наш floor — Package platforms
+  = .macOS(.v14)); linker-сеттинги таргета применяются к КАЖДОЙ линковке
+  его consumers (executable + tests-runner). Склейка `-Wl,…` SwiftPM в
+  unsafeFlags не пропускает — только `-Xlinker`-пары. (5) Транзитивные
+  зависимости SwiftTerm (swift-argument-parser, swift-png, h — все
+  Apache-2.0) ловятся license-check'ом при первом прогоне → NOTICE-строки
+  сразу по образцу транзитивных NIO-dep'ов. (6) Перф-гейты T-06/T-07
+  флейкят при параллельном прогоне под внешней нагрузкой (load ≥ 6 от
+  посторонних процессов; 0.071–0.139 s против бюджетов 0.05/0.1 s); соло
+  каждый проходит с ~3× запасом — гейт проходится ретрай-циклом с паузой.
+- **Гейты:** build 0 warnings (верифицировано двумя холодными
+  релинковками executable и tests-runner); Debug ×2 + Release — 335 зелёных
+  (+7 TerminalPathSeederTests); license-check OK.
 ### T-32. Настройки полные + custom columns + thumbnails (F-21, F-4)
 ### T-33. Темы (F-23 частично): light/dark/NC-blue, шрифты
 _(каждая задача: файлы из соответствующих модулей по карте `11`, критерии приёмки — из карточек фич `02`; тесты — unit + integration; пункт «Готово» = все acceptance критерии фичи.)_

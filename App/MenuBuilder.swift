@@ -66,6 +66,9 @@ enum MenuBuilder {
             ItemSpec(titleKey: "menu.searchFiles", command: .searchFiles),
             ItemSpec(titleKey: "menu.undo", command: .undo),
             ItemSpec(titleKey: "menu.itemInfo", command: .itemInfo),
+            // F-17 (T-31): embedded terminal (⌃`) and the path paste (⌃⇧V).
+            ItemSpec(titleKey: "menu.terminal", command: .toggleTerminal),
+            ItemSpec(titleKey: "menu.insertPath", command: .pastePath),
         ]),
     ]
 
@@ -220,6 +223,7 @@ enum MenuBuilder {
         case 44: return "-"
         case 45: return "."
         case 46: return "/"
+        case 50: return "`"   // T-31: ⌃` — embedded terminal (ANSI-US grave)
         case 67: return "*"
         case 69: return "+"
         case 75: return "/"

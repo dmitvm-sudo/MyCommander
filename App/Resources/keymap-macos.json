@@ -661,6 +661,27 @@
           "command"
         ]
       }
+    },
+    {
+      "command": "toggleTerminal",
+      "context": "global",
+      "combo": {
+        "keyCode": 50,
+        "modifiers": [
+          "control"
+        ]
+      }
+    },
+    {
+      "command": "pastePath",
+      "context": "global",
+      "combo": {
+        "keyCode": 9,
+        "modifiers": [
+          "control",
+          "shift"
+        ]
+      }
     }
   ]
 }

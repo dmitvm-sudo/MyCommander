@@ -89,12 +89,13 @@ final class PanelsCoordinator: NSObject {
             rightTabList = makeTabList(for: .right)
             rightTabList.seed(with: initialSeedPath)
         }
-        // T-26 (F-11): every displayed location lands in «recent folders».
+        // T-26 (F-11): every displayed location lands in «recent folders»;
+        // T-31 (F-17): the same hook also feeds the terminal auto-CD (06 §6.8).
         leftTabList.onPathVisited = { [weak self] path in
-            self?.locationsStore.noteVisit(path)
+            self?.handlePathVisited(path)
         }
         rightTabList.onPathVisited = { [weak self] path in
-            self?.locationsStore.noteVisit(path)
+            self?.handlePathVisited(path)
         }
 
         leftPane = PanelViewController(tabList: leftTabList)
@@ -222,6 +223,7 @@ final class PanelsCoordinator: NSObject {
 
     deinit {
         volumeTask?.cancel()
+        followTask?.cancel()   // T-31: the auto-CD debounce dies with the owner
     }
 
     private func makeTabList(for side: FocusController.PanelSide) -> PanelTabList {
@@ -520,6 +522,15 @@ final class PanelsCoordinator: NSObject {
         // open as a read-only virtual folder in that pane.
         router.register(.searchFiles) { [weak self] in
             self?.beginSearchFiles()
+        }
+
+        // F-17 (T-31): the embedded terminal toggles at ⌃` and takes panel
+        // paths at ⌃⇧V (the cursor item of the active pane).
+        router.register(.toggleTerminal) { [weak self] in
+            self?.toggleTerminal()
+        }
+        router.register(.pastePath) { [weak self] in
+            self?.pastePathToTerminal()
         }
 
         // F-6 (T-20): ⌘Z — undo the newest journal record through the same
@@ -953,6 +964,120 @@ final class PanelsCoordinator: NSObject {
         let font = NSFont.wrappedPanelFont(from: schema)
         leftPane?.fileListView.applyPanelFont(font)
         rightPane?.fileListView.applyPanelFont(font)
+    }
+
+    // MARK: Terminal pane (F-17 — T-31; 06 §6.8)
+
+    /// Layout connection points (MainWindowController): the segment hosts the
+    /// pane in the bottom part of the window (40% height) and receives the
+    /// show/hide latch callback.
+    weak var terminalSegment: NSView?
+    var onTerminalVisibilityChange: ((Bool) -> Void)?
+
+    /// One embedded pane for the window's lifetime; materialises at the first
+    /// ⌃` («терминал создаётся по требованию», 07 layout).
+    private(set) var terminalPane: TerminalPane?
+
+    private var isTerminalShown = false
+    /// The last local directory that some panel displayed — also the consumed
+    /// seed for a later pane creation.
+    private var lastPanelPosix: String?
+    /// Auto-CD debounce (150 мс, 06 §6.8): one `cd` per navigation burst.
+    private var followTask: Task<Void, Never>?
+
+    /// T-26 recent folders + T-31 terminal follow: both ride the tab hook
+    /// that PanelTabsView owns (every tab VM's onPathChanged funnels here).
+    private func handlePathVisited(_ path: VFSPath) {
+        locationsStore.noteVisit(path)
+        followTerminalPath(path)
+    }
+
+    private func followTerminalPath(_ path: VFSPath) {
+        // Archive/SFTP interludes are not cd-able — the shell stays put.
+        guard path.root.kind == .localDisk else { return }
+        let posix = posixPath(path)
+        followTask?.cancel()
+        followTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 150_000_000)
+            guard let self, !Task.isCancelled else { return }
+            self.applyFollowedPath(posix)
+        }
+    }
+
+    /// Only the panels' VISIBLE listings move the shell: a background tab
+    /// listing its own directory must not cd the child (the debounce checks
+    /// visibility at fire time). A hidden-but-alive shell still follows.
+    private func applyFollowedPath(_ posix: String) {
+        let visible = [leftPane, rightPane]
+            .compactMap { $0?.fileListView.viewModel.path }
+            .map { posixPath($0) }
+        guard visible.contains(posix) else { return }
+        lastPanelPosix = posix
+        terminalPane?.cdTo(path: posix)
+    }
+
+    private func toggleTerminal() {
+        if isTerminalShown {
+            isTerminalShown = false
+            onTerminalVisibilityChange?(false)
+            activatePanelList()   // 07 §7.2: focus returns to the panel list
+        } else {
+            showTerminalPane()
+        }
+    }
+
+    /// The pane materialises once; later toggles only reveal it — the child
+    /// keeps living while hidden (06 §6.8 process policy).
+    private func showTerminalPane() {
+        guard let pane = terminalPane ?? createTerminalPane() else { return }
+        isTerminalShown = true
+        onTerminalVisibilityChange?(true)
+        pane.focusInput()
+    }
+
+    private func createTerminalPane() -> TerminalPane? {
+        guard let segment = terminalSegment else { return nil }
+        let seed = lastPanelPosix ?? posixPath(activePane?.fileListView.viewModel.path ?? homePath)
+        let pane = TerminalPane(initialDirectory: seed)
+        pane.translatesAutoresizingMaskIntoConstraints = false
+        segment.addSubview(pane)
+        NSLayoutConstraint.activate([
+            pane.leadingAnchor.constraint(equalTo: segment.leadingAnchor),
+            pane.trailingAnchor.constraint(equalTo: segment.trailingAnchor),
+            pane.topAnchor.constraint(equalTo: segment.topAnchor),
+            pane.bottomAnchor.constraint(equalTo: segment.bottomAnchor),
+        ])
+        terminalPane = pane
+        return pane
+    }
+
+    /// ⌃⇧V: the cursor item of the ACTIVE pane becomes a quoted path in the
+    /// terminal's command line (a hidden terminal comes up on the spot). The
+    /// v1 scope is local-disk paths — anything else answers with an honest
+    /// console error (06 §6.8).
+    private func pastePathToTerminal() {
+        if !isTerminalShown { toggleTerminal() }
+        guard let pane = terminalPane,
+              let viewModel = activePane?.fileListView.viewModel,
+              let item = viewModel.item(atVisibleIndex: viewModel.cursor)
+        else { return }
+        guard let local = viewModel.source as? LocalVFS else {
+            commandBar.appendOutput(String(localized: "terminal.error.pasteLocalOnly"), isError: true)
+            return
+        }
+        pane.insert(path: local.url(for: item.id).path)
+    }
+
+    /// Window teardown (MainWindowController side): the child dies with the
+    /// window — v1 has no confirmation dialog (06 §6.8).
+    func shutdownTerminal() {
+        followTask?.cancel()
+        terminalPane?.terminateShell()
+        terminalPane = nil
+        if isTerminalShown {
+            isTerminalShown = false
+            onTerminalVisibilityChange?(false)
+        }
     }
 
     // MARK: Access mode (F-20 — T-17; 06 §6.10 v1)

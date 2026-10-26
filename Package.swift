@@ -13,6 +13,8 @@ let dependencies: [Package.Dependency] = [
     // T-23: NIOConcurrencyHelpers (NIOLockedValueBox) для async-safe примитивов
     // SftpVFS; прямая dep, т.к. продукты транзитивного swift-nio не импортируются.
     .package(url: "https://github.com/apple/swift-nio.git", from: "2.81.0"),
+    // T-31 (F-17): SwiftTerm PTY-хост встроенного терминала (NOTICE: MIT).
+    .package(url: "https://github.com/migueldeicaza/SwiftTerm.git", from: "1.2.0"),
     // T-23: NIOSSH (тест-стенд: SSHServer host keys + auth delegate) — продукт
     // форка, на который пинится Citadel 0.12.1 (NOTICE: Apache-2.0).
     .package(url: "https://github.com/Wellz26/swift-nio-ssh.git", from: "0.3.4"),
@@ -35,7 +37,7 @@ let moduleDependencyNames: [String: [String]] = [
     "ListViewKit": ["DomainKit", "EnginesKit", "FileOpsKit"],   // T-05 UI + T-07 фильтр + T-10 ProgressWindow (слои 04)
     "ServicesKit": ["DomainKit"],   // T-08: SessionStore сериализует VFSPath (§5.1 Codable)
     "FileOpsKit": ["DomainKit", "VFSKit", "ZIPFoundation"],   // T-10: планы/executor над VFS; локальные ветки через LocalVFS (слои 04); T-22: pack-flow zip (ZIPFoundation)
-    "TerminalKit": ["DomainKit"],   // T-14: ShellSession exec-ветка мапит ошибки в MCError (§5.8)
+    "TerminalKit": ["DomainKit", "SwiftTerm"],   // T-14: ShellSession exec-ветка мапит ошибки в MCError (§5.8); T-31: TerminalPane (SwiftTerm PTY-хост F-17)
 ]
 
 /// Зависимости, нужные ТОЛЬКО тест-таргетам (fake-адаптеры VFSKit в UI-тестах:
@@ -67,8 +69,17 @@ func dependency(named name: String) -> Target.Dependency {
 let libraries: [Target] = modules.map { module in
     let dependencies = (moduleDependencyNames[module.name] ?? []).map(dependency(named:))
     // T-29: HashCache uses the SYSTEM sqlite3 (no third-party dependency →
-    // no NOTICE entry).
-    let linkerSettings: [LinkerSetting]? = module.name == "EnginesKit" ? [.linkedLibrary("sqlite3")] : nil
+    // no NOTICE entry). T-31: SwiftTerm ships its own macOS 11 floor, its
+    // objects drag the linked binaries' effective minimum down to 11.0 and
+    // ld warns about newer (13.0) system Swift dylibs. OUR floor is macOS 14
+    // (Package platforms) — force it at link time.
+    let linkerSettings: [LinkerSetting]? = switch module.name {
+    case "EnginesKit": [.linkedLibrary("sqlite3")]
+    case "TerminalKit": [
+        .unsafeFlags(["-Xlinker", "-platform_version", "-Xlinker", "macos", "-Xlinker", "14.0", "-Xlinker", "14.0"]),
+    ]
+    default: nil
+    }
     return Target.target(name: module.name, dependencies: dependencies, path: "\(module.path)/Sources/\(module.name)", linkerSettings: linkerSettings)
 }
 

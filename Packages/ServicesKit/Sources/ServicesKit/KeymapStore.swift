@@ -63,7 +63,9 @@ public enum CommandID: String, Codable, Sendable, CaseIterable, Hashable {
     case multiRename
     case comparePanels
     case searchFiles
+    // F-17 (T-31): ⌃` — the embedded terminal; ⌃⇧V — the panel path into it.
     case toggleTerminal
+    case pastePath
 
     // Display / focus.
     case viewFull

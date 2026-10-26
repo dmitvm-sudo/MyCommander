@@ -293,6 +293,25 @@ enum ListerCodec { decodeTextPage / hexPage / … }  // ListViewKit, чиста�
 - `⌃\`` toggle нижней partiti (split: терминал 40 % высоты); авто-CD следит за панелью (debounced, опция off); выбор текста/копипаст/вставка path панели по `⌃⇧V`.
 - Политика процессов: child живёт, когда панель скрыта; kill при закрытии окна с подтверждением (если есть запущенные задачи).
 
+  *Уточнение T-31 (F-17 v1):* **TerminalPane** (`TerminalKit/TerminalPane.swift`,
+  NSView) — хост `LocalProcessTerminalView` (`/bin/zsh -l`, cwd = путь активной
+  панели; после смены панели — cwd последней сменившей путь панели; child
+  переживает скрытие панели, v1 kill при закрытии окна — WindowController
+  уничтожает вместе с собой). **TerminalPathSeeder** (`TerminalKit/
+  TerminalPathSeeder.swift`, чистая логика): `posixQuoted(String)` —
+  single-quotes, `'` → `'\''` (безопасно для пробелов/кавычек/`$`/`;`/unicode);
+  `cdTo(URL)` — `cd -- <quoted>\n` (выполнение); `insertSequence(URL)` —
+  quoted БЕЗ `\n` (вставка в набираемую команду). Auto-CD подписка: App
+  сразу по событию `PanelViewModel.onPathChanged` (обе панели; сменившая
+  путь панель = активная по факту движения), debounce 150 мс — без серии
+  cd при быстрых навигациях. **⌃⇧V** — команда `CommandID.pastePath` (07
+  map): App берёт курсорный/выделенный элемент активной панели (posix-путь
+  LocalVFS; не-локальная панель — честная ошибка «вставка доступна только
+  для локальных путей») и вызывает `TerminalPane.insert(path:)`; вставка
+  и copy — SwiftTerm built-in. Резайз — AppKit (vertical stack-сегмент
+  40 % высоты окна, 07 layout). Команда `CommandID.toggleTerminal` — ⌃`
+  (keyCode 50, U+0060), обе профили keymap.
+
 - **Контракт v1 (T-14 — командная строка F-17а, exec-ветка):**
 ```swift
 struct ShellOutcome: Sendable, Equatable {      // один выстрел, НЕ PTY (PTY — F-17, M3)
