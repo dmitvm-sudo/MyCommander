@@ -600,6 +600,16 @@
           "option"
         ]
       }
+    },
+    {
+      "command": "multiRename",
+      "context": "panelList",
+      "combo": {
+        "keyCode": 120,
+        "modifiers": [
+          "shift"
+        ]
+      }
     }
   ]
 }

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import DomainKit
+import EnginesKit
 import FileOpsKit
 import Foundation
 import Testing
@@ -213,8 +214,7 @@ struct UnifiedQueueIntegrationTests {
     }
 
     /// Unicode names survive the SFTP hop too (п.7 «без потери имён»).
-    @Test func sftpCopyPreservesUnicodeNames() async throws {
-        let fixture = try await SFFixture.start("uq-sftp-uni")
+    @Test func sftpCopyPreservesUnicodeNames() async throws {        let fixture = try await SFFixture.start("uq-sftp-uni")
         defer { Task { await fixture.stop() } }
         let connection = try await fixture.connect()
         let local = LocalVFS(at: fixture.root, instanceID: VFSInstanceID(kind: .localDisk, specID: "uq-sftp-uni-src"))
@@ -241,5 +241,56 @@ struct UnifiedQueueIntegrationTests {
         while let chunk = try await stream.readChunk(max: 4096) { data.append(chunk) }
         #expect(data == Data("uni-0".utf8))
         await connection.close()
+    }
+
+    /// F-14 (T-28): the multi-rename plan rides the SAME unified queue —
+    /// ONE `.move` plan built by RenamePlanner, executed with the panel's
+    /// per-run VFS pair; the journal records `renameBack` (undo F-6).
+    @Test func multiRenameThroughUnifiedQueue() async throws {
+        let root = uqTempRoot("uq-rename")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let panelID = VFSInstanceID(kind: .localDisk, specID: "uq-rename-panel")
+        let vfs = LocalVFS(at: root, instanceID: panelID)
+        let names = ["photo1.jpg", "photo2.jpg", "notes.md"]
+        for (index, name) in names.enumerated() {
+            try uqWrite(Data("content-\(index)".utf8), to: root.appendingPathComponent(name))
+        }
+        let listing = try await vfs.listDirectory(at: VFSPath(root: panelID))
+        // Deterministic selection order (the panel sends visible order): the
+        // counters ride it — «photo1, photo2, notes» → 01, 02, 03.
+        let items = names.compactMap { name in listing.first { $0.name == name } }
+
+        let rule = RenameRule(template: "trip_[C].[E]", counterStart: 1, counterStep: 1, counterPad: 2)
+        let plan = RenamePlanner.plan(items: items, rule: rule, occupiedNames: Set(listing.map(\.name)))
+        #expect(plan.isValid && plan.pairs.count == 3)
+        let transfer = RenamePlanner.buildTransferPlan(pairs: plan.pairs, in: VFSPath(root: panelID))
+
+        let journal = JournalStorage()
+        let executor = OperationExecutor(source: vfs, destination: vfs, journal: journal)
+        let summary = await uqRun(transfer, policy: ConflictPolicy(defaultResolution: .skip), executor: executor, source: vfs, destination: vfs)
+        #expect(summary?.succeededItems == 3)
+
+        // The directory now holds exactly the renamed set (counters ride the
+        // selection order).
+        let after = try await vfs.listDirectory(at: VFSPath(root: panelID))
+        let afterNames = Set(after.map(\.name))
+        #expect(afterNames == ["trip_01.jpg", "trip_02.jpg", "trip_03.md"])
+
+        // Undo receipt: the move branch journals PER ITEM (one .move record
+        // with one renameBack each) — collect the whole receipt and union the
+        // reversals (undo replays them bottom-up).
+        var reversals: Set<Reversal> = []
+        var recordOps: [TransferOpKind] = []
+        while let record = journal.popLast() {
+            recordOps.append(record.op)
+            reversals.formUnion(record.reversals)
+        }
+        #expect(Set(recordOps) == [.move])
+        let expected: Set<Reversal> = [
+            .renameBack(at: VFSPath(root: panelID, components: ["trip_01.jpg"]), previousName: "photo1.jpg"),
+            .renameBack(at: VFSPath(root: panelID, components: ["trip_02.jpg"]), previousName: "photo2.jpg"),
+            .renameBack(at: VFSPath(root: panelID, components: ["trip_03.md"]), previousName: "notes.md"),
+        ]
+        #expect(reversals == expected)
     }
 }

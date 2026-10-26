@@ -205,6 +205,43 @@ _(этот слот оставлен пустым намеренно: нумер
 ## M3 — Power tools
 
 ### T-28. RenamePlanner + диалог multi-rename (F-14)
+- **Готово:** RenameRule + RenamePlanner (EnginesKit), MultiRenameDialog (ListViewKit), команда ⌘M / tc ⇧F2, commit через unified queue; undo F-6.
+- **Уточнение (по ходу реализации T-28):** (1) SDD раньше кода: `06` §6.6
+  уточнение T-28 — RenameRule (template-токены `[N]`/`[C]`/`[E]`, counter
+  start/step/pad, find/replacement/isRegex, caseStyle, extensionMode
+  keep/replace/remove; расширение = суффикс после ПОСЛЕДНЕЙ точки, каталоги
+  переименовываются целиком — расширения не имеют; шаблон — единственный источник
+  формы нового имени), RenamePlan (pairs + conflicts: `duplicateTarget` = совпадение
+  с другим результатом плана, `targetExists` = имя занято ЧУЖИМ файлом —
+  «переименование в имя планируемого соседа» (swap-цепочка) конфликтом НЕ является,
+  `invalidName`: пусто/`/`/`.`/`..`); unchanged-пары (new == old) в план не
+  попадают; commit = ОДИН план `.move` (same-volume rename(2), journal
+  `renameBack` → undo F-6 бесплатно) через per-run пару unified queue (05 §5.6
+  T-27); сортировка плана стабильна по old-name — только для стабильности
+  ИСПОЛНЕНИЯ, счётчик едет в порядке выделения. Бюджет: план 10k имён ≤ 1 с
+  (замер 0.08 с). `11` layout: +`RenameRule.swift`. (2) Код:
+  `EnginesKit/RenameRule.swift` (ручной Codable — associated value у
+  extensionMode), `EnginesKit/RenamePlanner.swift` (pure, без I/O — preview
+  зовётся на каждый keystroke), `ListViewKit/MultiRenameDialog.swift` (AppKit
+  NSPanel по образцу PackDialog: live-preview, конфликты красным, Apply
+  disabled при конфликтах/пустом плане; Cancel = отмена до commit; preview =
+  сухой прогон), App `beginMultiRename` (per-run пара панели, stream
+  потребляется, reload после finished), MenuBuilder `menu.multiRename`,
+  keymap tc ⇧F2 / macos ⌘M (конфликт-скан чист: 64/66 entries). (3) Тесты:
+  юнит ×13 (`EnginesKitTests/RenamePlannerTests.swift`: токены, pad,
+  literal-duplicate, replace/case, regex, ext keep/replace/remove, каталоги,
+  unchanged, targetExists-foreign, invalidName, commit-план, 10k-бюджет) +
+  интеграция `multiRenameThroughUnifiedQueue` (VFSKitTests, test-dep +EnginesKit):
+  план `.move` через единый executor с per-run парой, каталог после = точное
+  множество новых имён. (4) Уроки: кортежи/`[(a,b)]` не Equatable в `#expect` →
+  `[[String]]`; `VFSItemKind` имеет associated value (не Equatable) →
+  `if case .directory`; `NSButton(checkboxWithTitle:)` требует
+  target:/action: в stored property; **journal у move — PER ITEM** (одна запись
+  `.move` с ОДНИМ `renameBack` на файл, не одна запись на план) — undo-приёмка
+  в тестах: слить все `popLast()`-записи и сверить объединение реверсалов
+  (undo bottom-up разворачивает их корректно); счётчик rename — порядок
+  выделения, НЕ сортировка (в тестах детерминированный порядок выборки).
+  (5) Гейты: build 0 warnings; Debug ×2 + Release — 302 зелёных; license-check OK.
 ### T-29. SyncReporter + dry-run UI (F-15)
 ### T-30. SearchEngine + результаты-виртуальная папка (F-16)
 ### T-31. TerminalPane встроенный (F-17): SwiftTerm, ⌃`, auto-cd, вставка путей

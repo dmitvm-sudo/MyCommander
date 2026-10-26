@@ -631,6 +631,16 @@
           "command"
         ]
       }
+    },
+    {
+      "command": "multiRename",
+      "context": "panelList",
+      "combo": {
+        "keyCode": 46,
+        "modifiers": [
+          "command"
+        ]
+      }
     }
   ]
 }

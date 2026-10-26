@@ -503,6 +503,12 @@ final class PanelsCoordinator: NSObject {
             self?.openItemInfo()
         }
 
+        // F-14 (T-28): multi-rename over the effective selection of the
+        // active panel; the dialog builds ONE .move plan (undo rides F-6).
+        router.register(.multiRename) { [weak self] in
+            self?.beginMultiRename()
+        }
+
         // F-6 (T-20): ⌘Z — undo the newest journal record through the same
         // planner/conflicts/executor path as forward operations.
         router.register(.undo) { [weak self] in
@@ -1314,6 +1320,37 @@ final class PanelsCoordinator: NSObject {
             }
             let (id, stream) = await operationExecutor.enqueue(plan, policy: policy)
             showProgress(id: id, operation: stream, itemCount: plan.items.count)
+        }
+    }
+
+    /// F-14 (T-28): multi-rename over the effective selection. The dialog is
+    /// the dry run (live preview, conflicts red, Apply disabled while
+    /// invalid); Apply builds ONE `.move` plan executed through the unified
+    /// queue with the PANEL's VFS pair (05 §5.6 уточнение T-27). The stream is
+    /// consumed here and the panel reloads on finish (SFTP has no watch).
+    private func beginMultiRename() {
+        guard let pane = activePane else { return }
+        let viewModel = pane.fileListView.viewModel
+        let selection = viewModel.effectiveSelection
+        guard !selection.isEmpty else { return }
+        let items = (0 ..< viewModel.visibleCount).compactMap { viewModel.item(atVisibleIndex: $0) }
+            .filter { selection.contains($0.id) }
+        guard !items.isEmpty else { return }
+        let occupied = Set(viewModel.rawItems.map(\.name))
+        let panelVFS = viewModel.source
+
+        guard let plan = MultiRenameDialog.run(items: items, occupiedNames: occupied) else { return }
+        Task { [weak self] in
+            guard let self else { return }
+            let (id, stream) = await self.operationExecutor.enqueue(
+                plan,
+                policy: ConflictPolicy(defaultResolution: .skip),
+                source: panelVFS,
+                destination: panelVFS
+            )
+            _ = id
+            for await _ in stream {}
+            await viewModel.reload()
         }
     }
 

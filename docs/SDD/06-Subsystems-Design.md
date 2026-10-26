@@ -174,6 +174,32 @@ cancellation на границах чанков — `SftpByteStream.readChunk`/
 - **FilterEngine** (quick filter F-10): подстрока/fuzzy (скорл-Damerau-подобная, но простая prefix-matching по умолчанию substring), обработка ≤ 50 мс на 50k (по Int-index, без создания строк повторно; мемоизация префикса ввода).
 - **SearchEngine** (F-16): первый проход — Spotlight-first: `NSMetadataQuery` (если том индексируем): predicate по маске/дате/размеру; content-search: streaming read → bytescan (строчно, по 8 MB), ограничение размера файла (настройка), отмена мгновенная. Результат — виртуальный `SearchResultVFS` (реестр результатов + фильтр-пересборка снимка любого набора).
 - **RenamePlanner** (F-14): вход — блок правил (маска-шаблон `[N]`, `[C]`, `[E]`, counter start/step/pad, replace/regex, регистр), выход — таблица old→new + conflicts (дубликаты новых имён, существующие целя); commit — batch через OperationExecutor (sort для стабильности).
+
+  *Уточнение T-28 (F-14 v1):* **RenameRule** — `template: String` с токенами
+  `[N]` (обработанное старое имя), `[C]` (счётчик: start/step/pad-ширина),
+  `[E]` (расширение); `find`/`replacement`/`isRegex` (replace-блок по
+  `NSRegularExpression` при regex); `caseStyle: .unchanged/.lowercase/.uppercase`;
+  `extensionMode: .keep/.replace(String)/.remove` (переопределяет `[E]`).
+  Семантика: расширение = суффикс после ПОСЛЕДНЕЙ точки (у каталогов и имён без
+  точки расширения нет); токены, не указанные в шаблоне, НЕ добавляются
+  (шаблон — единственный источник формы нового имени; `[C]` без pad = как есть).
+  **RenamePlanner.plan(items: [VFSItem], rule: RenameRule) -> RenamePlan**:
+  `pairs: [(old: VFSItem, newName: String)]` + `conflicts: [(index,
+  kind: .duplicateTarget(newName) | .targetExists(newName))]` — конфликт
+  `duplicateTarget` = результат совпал с другим результатом плана,
+  `targetExists` = имя занято в каталоге (список имён каталога приходит от
+  вызывающего — у панели он уже есть; переименование в то же имя у самого
+  файла не конфликт); `unchanged` пары (new == old) в план не попадают.
+  Invalid-результат (пусто, `/`, `.`/`..`) → конфликт `.invalidName(newName)`.
+  **Commit**: `RenamePlanner.buildTransferPlan(pairs, in: parent) -> TransferPlan`
+  — ОДИН план `.move` (same-volume rename(2), journal `renameBack` → undo F-6
+  бесплатно) через per-run пару unified queue (05 §5.6 уточнение T-27); сортировка
+  пар стабильна по old-name. Бюджет: план 10 000 имён ≤ 1 с (F-14 acceptance,
+  perf-тест). **Диалог** (`ListViewKit/MultiRenameDialog.swift`, AppKit NSPanel
+  по образцу PackDialog): поля правил + live-preview таблица old→new (конфликты
+  — красным), Apply отключён при наличии конфликтов, Cancel = отмена до commit;
+  сухой прогон = preview без Apply. Команда `CommandID.multiRename` — ⌘M
+  (07 карта), tc-профиль ⇧F2.
 - **SyncReporter** (F-15): сравнение двух деревьев по (name, size, mtime) или hash (parallel workers ≤ 4, sqlite-кэш hash) → матрица only-A/only-B/diff/equal → action-script (copy L→R / R→L / mirror (delete) с dry-run по умолчанию) → исполнение через TransferQueue.
 
 ## 6.7 Lister (F-8)

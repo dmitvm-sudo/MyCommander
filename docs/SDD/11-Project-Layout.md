@@ -77,6 +77,7 @@ MyCommander/
 │   ├── NSMetadataQueryBridge.swift  # Spotlight-first путь
 │   ├── ByteScan.swift               # content-скан стримом
 │   ├── RenamePlanner.swift          # F-14
+│   ├── RenameRule.swift             # T-28: правило multi-rename (маска/replace/регистр/расширение)
 │   ├── SyncReporter.swift           # F-15 (diff-матрица, mirror)
 │   └── HashCache.swift              # sqlite-кэш хэшей для sync
 │
