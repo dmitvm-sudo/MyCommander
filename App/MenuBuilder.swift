@@ -116,7 +116,7 @@ enum MenuBuilder {
             for (command, slot) in hotSlotCommands where router.isRegistered(command) {
                 let title: String
                 if let bookmark = locations.hotSlot(slot) {
-                    title = "[\(slot)] \(bookmark.name)"
+                    title = String(format: String(localized: "menu.hotSlotBookmark"), slot, bookmark.name)
                 } else {
                     title = String(format: String(localized: "menu.hotSlotFormat"), slot)
                 }

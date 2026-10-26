@@ -672,7 +672,7 @@ final class PanelsCoordinator: NSObject {
                 }
                 if outcome.exitCode != 0 {
                     commandBar.appendOutput(
-                        String(localized: "commandBar.console.exitCode \(outcome.exitCode)"),
+                        String(localized: "commandBar.console.exitCode \(Int(outcome.exitCode))"),
                         isError: true
                     )
                 }
@@ -961,7 +961,7 @@ final class PanelsCoordinator: NSObject {
         let alert = NSAlert()
         alert.alertStyle = .warning
         alert.messageText = String(localized: "connections.failure.title")
-        alert.informativeText = "\(record.name): \(error.errorDescription ?? String(describing: error))"
+        alert.informativeText = String(format: String(localized: "progress.failureDetail"), record.name, error.errorDescription ?? String(describing: error))
         alert.runModal()
     }
 

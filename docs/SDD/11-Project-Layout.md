@@ -24,8 +24,11 @@ MyCommander/
 │   ├── Onboarding/OnboardingFlow.swift        # FDA-онбординг F-20
 │   ├── Onboarding/AccessProbe.swift           # мягкая проба доступа
 │   ├── Dialogs/                     # SwiftUI-обёртки: Settings, About, Go-to-folder
-│   └── Resources/                   # Assets, MainMenu.xib, Localizable.xcstrings,
-│                                    # keymap-tc.json, keymap-macos.json, theme-ncblue.json
+│   └── Resources/                   # Assets, MainMenu.xib, keymap-tc.json,
+│                                    # keymap-macos.json, theme-ncblue.json,
+│                                    # en.lproj/ + ru.lproj/Localizable.strings (F-22,
+│                                    # T-35: ЕДИНЫЙ мастер-каталог всего UI; пакеты
+│                                    # резолвят через Bundle.main = app-bundle)
 │
 ├── Packages/DomainKit/              # чистая модель (0 UI-зависимостей)
 │   ├── Sources/DomainKit/
@@ -111,6 +114,8 @@ MyCommander/
 │   └── LogScrubber.swift            # маскирование путей в экспорте лога
 │
 ├── Tools/fixture-generator/         # SPM-утилита генерации деревьев/файлов
+├── Tools/license-check.sh           # N-10: NOTICE ↔ Package.resolved
+├── Tools/localization-check.sh      # F-22 lint: UI-литералы без букв, ключи ↔ .strings
 └── Tests/SharedFixtures/            # golden-архивы, ключи ssh (CI), образы-скрипты
 ```
 

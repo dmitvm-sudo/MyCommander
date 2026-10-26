@@ -1,0 +1,334 @@
+/* F-22 (T-35): master UI catalog — EN. All windows resolve through
+   Bundle.main (see docs/SDD/08 §8.1, T-35 note). Format keys carry the
+   specifiers derived from the interpolation at the call site. */
+
+/* Status: access badges */
+"access.badge.full" = "Full access";
+"access.badge.restricted" = "Restricted";
+"access.badge.safe %@" = "Safe mode: %@";
+
+/* Command bar / console */
+"commandBar.console.exitCode %lld" = "Exit code: %lld";
+"commandBar.error.missingArgument %@" = "Missing argument for %@";
+"commandBar.error.missingArgument !" = "Missing argument: name after !";
+"commandBar.error.missingArgument cd" = "Missing argument for cd";
+"commandBar.error.missingArgument mkdir" = "Missing argument for mkdir";
+"commandBar.error.missingArgument open" = "Missing argument for open";
+"commandBar.error.mkdirNesting %@" = "mkdir inside a non-directory: %@";
+"commandBar.error.pathNotFound %@" = "Path not found: %@";
+"commandBar.error.shellLocalOnly" = "Shell works only for local directories";
+"commandBar.error.unknownCommand %@" = "Unknown command: %@";
+"commandBar.placeholder" = "Type a command…";
+"commandBar.prompt" = "Command:";
+"commandBar.prompt %@" = "%@";
+
+/* Conflict dialog */
+"conflict.all.keepBoth" = "All: keep both";
+"conflict.all.overwrite" = "All: overwrite";
+"conflict.all.skip" = "All: skip";
+"conflict.cancel" = "Cancel";
+"conflict.column.name" = "Name";
+"conflict.column.resolution" = "Action";
+"conflict.column.source" = "Source";
+"conflict.column.target" = "Target";
+"conflict.continue" = "Continue";
+"conflict.preview.absent" = "— absent —";
+"conflict.preview.folder" = "Folder";
+"conflict.resolution.keepBoth" = "Keep both";
+"conflict.resolution.overwrite" = "Overwrite";
+"conflict.resolution.skip" = "Skip";
+"conflict.title" = "Conflicts";
+
+/* Connections window */
+"connections.add" = "Add";
+"connections.auth" = "Authentication";
+"connections.auth.password" = "Password";
+"connections.auth.privateKey" = "Private key";
+"connections.column.name" = "Name";
+"connections.connect" = "Connect";
+"connections.delete" = "Delete";
+"connections.failure.title" = "Connection failed";
+"connections.host" = "Host";
+"connections.hostkey.abort" = "Abort";
+"connections.hostkey.changed.title" = "Host key changed!";
+"connections.hostkey.firstUse.title" = "First connection";
+"connections.hostkey.retrust" = "Trust new key";
+"connections.hostkey.trust" = "Trust";
+"connections.key" = "Key";
+"connections.key.browse" = "Browse…";
+"connections.name" = "Name";
+"connections.passphrase.placeholder" = "Optional passphrase";
+"connections.password.placeholder" = "Stored in Keychain";
+"connections.port" = "Port";
+"connections.save" = "Save";
+"connections.title" = "Connections";
+"connections.untitled" = "Untitled";
+"connections.username" = "Username";
+
+/* Mask dialog (F-3) */
+"dialog.mask.apply" = "Apply";
+"dialog.mask.cancel" = "Cancel";
+"dialog.mask.deselect" = "Deselect by mask";
+"dialog.mask.placeholder" = "Mask (e.g. *.txt)";
+"dialog.mask.select" = "Select by mask";
+
+/* Drag & drop */
+"drop.error.unsupportedSource" = "Cannot drag from this source";
+
+/* Info dialog */
+"info.copy" = "Copy";
+"info.field.created" = "Created";
+"info.field.group" = "Group";
+"info.field.kind" = "Kind";
+"info.field.modified" = "Modified";
+"info.field.name" = "Name";
+"info.field.owner" = "Owner";
+"info.field.permissions" = "Permissions";
+"info.field.size" = "Size";
+"info.field.tags" = "Tags";
+"info.kind.directory" = "Folder";
+"info.kind.file" = "File";
+"info.kind.special" = "Special";
+"info.kind.symlink %@" = "Symlink → %@";
+"info.kind.symlinkDangling" = "Dangling symlink";
+"info.title %@" = "Info — %@";
+
+/* Lister (F-3 view) */
+"lister.error" = "Load failed";
+"lister.mode.hex" = "Hex";
+"lister.mode.image" = "Image";
+"lister.mode.text" = "Text";
+"lister.status %@ %@ %@" = "%@ of %@ · %@";
+"lister.title %@" = "Lister — %@";
+
+/* Locations window */
+"locations.column.name" = "Name";
+"locations.delete" = "Delete";
+"locations.go" = "Go";
+"locations.recents" = "Recent folders";
+"locations.slot" = "Slot";
+"locations.slot.none" = "—";
+"locations.title" = "Locations";
+"locations.untitledRoot" = "(root)";
+
+/* Main menu */
+"menu.appName" = "MyCommander";
+"menu.bookmarkAdd" = "Add Bookmark";
+"menu.closeTab" = "Close Tab";
+"menu.commandBar" = "Command Bar";
+"menu.comparePanels" = "Compare Panels";
+"menu.connectSftp" = "Connect SFTP…";
+"menu.copyFiles" = "Copy";
+"menu.deleteFiles" = "Delete";
+"menu.deselectMasked" = "Deselect by Mask…";
+"menu.editFile" = "Edit File";
+"menu.focusLeft" = "Focus Left Panel";
+"menu.focusRight" = "Focus Right Panel";
+"menu.go" = "Go";
+"menu.home" = "Home";
+"menu.hotSlotBookmark" = "[%ld] %@";
+"menu.hotSlotFormat" = "Slot %ld";
+"menu.insertPath" = "Insert Path into Terminal";
+"menu.invertSelection" = "Invert Selection";
+"menu.itemInfo" = "Properties";
+"menu.locations" = "Locations…";
+"menu.miniaturize" = "Miniaturize";
+"menu.moveFiles" = "Move";
+"menu.multiRename" = "Multi-Rename";
+"menu.newTab" = "New Tab";
+"menu.nextTab" = "Next Tab";
+"menu.openSettings" = "Settings…";
+"menu.navigateBack" = "Back";
+"menu.navigateForward" = "Forward";
+"menu.openLocations" = "All Locations…";
+"menu.operations" = "Operations";
+"menu.packFiles" = "Pack";
+"menu.parentDirectory" = "Parent Directory";
+"menu.previousTab" = "Previous Tab";
+"menu.quickLook" = "Quick Look";
+"menu.quit" = "Quit MyCommander";
+"menu.reload" = "Reload";
+"menu.reopenClosedTab" = "Reopen Closed Tab";
+"menu.restoreSelection" = "Restore Selection";
+"menu.searchFiles" = "Find Files";
+"menu.selectAll" = "Select All";
+"menu.selectMasked" = "Select by Mask…";
+"menu.selection" = "Selection";
+"menu.swapPanels" = "Swap Panels";
+"menu.tabs" = "Tabs";
+"menu.terminal" = "Terminal";
+"menu.undo" = "Undo";
+"menu.view" = "View";
+"menu.viewBrief" = "Brief";
+"menu.viewColumns" = "Columns";
+"menu.viewFile" = "View File";
+"menu.viewFull" = "Full";
+"menu.viewThumbnails" = "Thumbnails";
+"menu.window" = "Window";
+"menu.zoom" = "Zoom";
+
+/* Onboarding (F-20) */
+"onboarding.body" = "MyCommander reads files outside the sandbox only with Full Disk Access. Without it the app runs in Safe Mode (Desktop, Documents, Downloads).";
+"onboarding.continueWithout" = "Continue without full access";
+"onboarding.headline" = "Grant disk access";
+"onboarding.hide" = "Hide";
+"onboarding.openSettings" = "Open System Settings";
+"onboarding.title" = "Access";
+
+/* Pack dialog (F-12) */
+"pack.cancel" = "Cancel";
+"pack.compression" = "Compression";
+"pack.compression.deflate" = "Deflate";
+"pack.compression.store" = "Store";
+"pack.defaultName" = "Archive.zip";
+"pack.name" = "Archive name";
+"pack.name.placeholder" = "e.g. backup.zip";
+"pack.ok" = "Pack";
+"pack.onlyLocalDestination" = "Packing is supported only into local destinations";
+"pack.title" = "Pack";
+
+/* Panel status line */
+"panel.status.error %@" = "Error: %@";
+"panel.status.filter %@" = "Filter: %@";
+
+/* Progress window */
+"progress.cancel" = "Cancel";
+"progress.failureDetail" = "%@: %@";
+"progress.failed %@" = "Failed: %@";
+"progress.pause" = "Pause";
+"progress.resume" = "Resume";
+"progress.starting %lld" = "Starting… %lld items";
+"progress.title" = "Operation progress";
+
+/* Multi-rename (F-14) */
+"rename.apply" = "Apply";
+"rename.cancel" = "Cancel";
+"rename.case" = "Case";
+"rename.case.lowercase" = "lowercase";
+"rename.case.unchanged" = "as is";
+"rename.case.uppercase" = "UPPERCASE";
+"rename.column.new" = "New name";
+"rename.column.old" = "Old name";
+"rename.counter" = "Counter";
+"rename.counter.pad" = "pad";
+"rename.counter.start" = "start";
+"rename.counter.step" = "step";
+"rename.ext" = "Extension";
+"rename.ext.keep" = "Keep";
+"rename.ext.remove" = "Remove";
+"rename.ext.replace" = "Replace with…";
+"rename.find" = "Find";
+"rename.regex" = "RegEx";
+"rename.template" = "Template";
+"rename.title" = "Multi-Rename";
+
+/* Report (F-5/F-14 summaries) */
+"report.reason %@" = "Reason: %@";
+"report.summary %lld %lld %lld" = "%lld done · %lld skipped · %lld failed";
+
+/* Search dialog (F-16) */
+"search.caseSensitive" = "Case sensitive";
+"search.close" = "Close";
+"search.column.matches" = "Hits";
+"search.column.name" = "Name";
+"search.column.size" = "Size";
+"search.content" = "Content";
+"search.limit" = "Limit";
+"search.mask" = "Mask";
+"search.regex" = "RegEx";
+"search.results.folder" = "Search results";
+"search.size" = "Size (KB)";
+"search.size.max" = "max";
+"search.size.min" = "min";
+"search.start" = "Search";
+"search.status.canceled %lld" = "Search canceled · %lld hits";
+"search.status.done %lld %@" = "%lld hits %@";
+"search.status.failed" = "Search failed";
+"search.status.hits %lld" = "%lld hits";
+"search.status.idle" = "Enter a mask and press Search";
+"search.status.running" = "Searching…";
+"search.status.truncated" = "(truncated)";
+"search.title" = "Find Files";
+"search.toPanel" = "Send to panel";
+
+/* Settings (F-21) */
+"settings.appearance.family" = "Font family";
+"settings.appearance.mono" = "Monospaced";
+"settings.appearance.theme" = "Theme";
+"settings.archive.autoMount" = "Mount archives on open";
+"settings.deletion.confirm" = "Confirm deletions";
+"settings.deletion.confirm.cancel" = "Cancel";
+"settings.deletion.confirm.message %lld" = "Delete %lld item(s)? It can be undone from the journal.";
+"settings.deletion.confirm.ok" = "Delete";
+"settings.editor.browse" = "Browse…";
+"settings.editor.placeholder" = "Path to external editor";
+"settings.export" = "Export…";
+"settings.import" = "Import…";
+"settings.reset" = "Reset to defaults";
+"settings.section.appearance" = "Appearance";
+"settings.section.archive" = "Archives";
+"settings.section.deletion" = "Deletion";
+"settings.section.editor" = "Editor";
+"settings.section.terminal" = "Terminal";
+"settings.section.view" = "View";
+"settings.terminal.autoCd" = "Auto cd on panel change";
+"settings.theme.dark" = "Dark";
+"settings.theme.light" = "Light";
+"settings.theme.ncBlue" = "NC blue";
+"settings.theme.system" = "System";
+"settings.title" = "Settings";
+"settings.view.columns.placeholder" = "Columns, e.g. name,size";
+"settings.view.style" = "Filter style";
+"settings.view.style.fuzzy" = "Fuzzy";
+"settings.view.style.substring" = "Substring";
+
+/* Sync dialog (F-15) */
+"sync.action.copyAToB" = "Copy A → B";
+"sync.action.copyBToA" = "Copy B → A";
+"sync.action.deleteInA" = "Delete in A";
+"sync.action.deleteInB" = "Delete in B";
+"sync.apply" = "Apply";
+"sync.cancel" = "Cancel";
+"sync.column.action" = "Action";
+"sync.column.path" = "Path";
+"sync.confirm.body %lld %@ %@" = "Apply %lld action(s): %@ → %@";
+"sync.confirm.title" = "Confirm";
+"sync.countFormat" = "%ld / %ld / %ld / %ld";
+"sync.direction" = "Direction";
+"sync.direction.aToB" = "A → B";
+"sync.direction.bToA" = "B → A";
+"sync.mirror" = "Mirror";
+"sync.summary %@" = "Summary: %@";
+"sync.title" = "Compare Folders";
+
+/* Tab chrome */
+"tab.close" = "Close tab";
+"tab.lock" = "Lock scroll";
+
+/* List cell badges */
+"cell.badge.hidden" = "Hidden item";
+"cell.badge.locked" = "Locked item";
+"cell.badge.symlink" = "Symlink";
+"cell.kind.folder" = "Folder";
+
+/* Columns */
+"column.dateCreated" = "Created";
+"column.dateModified" = "Modified";
+"column.kind" = "Kind";
+"column.name" = "Name";
+"column.owner" = "Owner";
+"column.permissions" = "Permissions";
+"column.size" = "Size";
+"column.tags" = "Tags";
+"column.thumbnails" = "Thumbnails";
+
+/* Terminal pane */
+"terminal.cdToDirectory" = "cd to panel directory";
+"terminal.error.pasteLocalOnly" = "Path insert works only for local panels";
+"terminal.insertPanelPath" = "Insert panel path (⌃⇧V)";
+
+/* Undo */
+"undo.unavailable" = "Nothing to undo";
+
+/* Main window */
+"window.title" = "MyCommander";

@@ -36,6 +36,22 @@
 
 **EnginesKit:** FilterEngine (подстрока/fuzzy/пгебъеф-prefix, ties); RenamePlanner (маски-счислители, conflicts, dry-run); SyncReporter (disjoint/identical/diff/mirror-delete; hash-cache инвалмидация по mtime+размеру); SearchEngine (mask, size/date фильтры, content-hit).
 
+*Уточнение T-35 (F-22, L10n-интегрити):* единственный мастер-каталог
+`App/Resources/{en,ru}.lproj/Localizable.strings` (CLI-SwiftPM НЕ компилирует
+.xcstrings — пробанка T-35: файл копируется в бандл как есть и не резолвится,
+поэтому форма — классические .strings в lproj-папках; `defaultLocalization: "en"`
+на пакете; пакеты резолвят через Bundle.main = app-bundle, код НЕ трогаем).
+Тест `LocalizationStringsTests` (ListViewKitTests, name-space `loc`): (a) en/ru
+разбираются `NSDictionary(contentsOfFile:)`, ключи-наборы равны, значения
+непустые; (b) каждый source-ключ `String(localized: "…")` (скан
+Packages/*/Sources + App, однострочный мини-парсер) есть в каталоге; (c) каждый
+каталог-формат-ключ (`… %@`, `… %lld`) обязан быть префиксом чьей-то
+интерполированной исходной строки «ключ + пробел» — сверка в обе стороны.
+Lint-гейт `Tools/localization-check.sh`: UI-литералы (title/messageText/
+placeholder/stringValue/label-инициалы и др. — 15 паттернов) НЕ содержат букв
+(иначе fail, inline-исключение `// l10n-allow`); плюс сверки ключей ↔ .strings.
+CI-рега: прогон скрипта в отдельном шаге ci.yml до merge.
+
 **ServicesKit:** миграции settings schemaVersion n−1→n; keymap конфликт-detect; Keychain round-trip (интеграционно, macOS runner); log-scrubber (пути маскируются).
 
 ## 8.4 Ручной smoke-чеклист (каждый milestone exit)

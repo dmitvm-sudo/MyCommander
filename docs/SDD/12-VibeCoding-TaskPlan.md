@@ -482,6 +482,46 @@ _(этот слот оставлен пустым намеренно: нумер
 
 ## v1.0
 ### T-35. Локализация EN/RU (F-22, String Catalogs, lint-правило)
+
+- **Уточнение (по ходу реализации T-35):** (1) Инвентарь: 281 ключ
+  (223 прямых + 3 новых формат-ключа + 2 тернарных select/deselect + 38
+  меню-тайтлов + 5 секций + 6 колонок conflict/search); ru-каталог —
+  полный parity. (2) **Пробанка решает форму каталога:** CLI-SwiftPM
+  (swift 6.3.2) НЕ компилирует `.xcstrings` — файл копируется в бандл
+  как есть и `String(localized:)` его не резолвит → мастер-каталог в
+  классике `App/Resources/{en,ru}.lproj/Localizable.strings`; `.process`
+  складывает lproj в бандл (проверено на
+  `MyCommander_MyCommander.bundle/en.lproj/…`); пакеты резолвят через
+  Bundle.main (= app-bundle), код ЭКСТЕНСИОНАЛЬНО не тронут.
+  `defaultLocalization: "en"` — параметр ПАКЕТА (не target!) и ОБЯЗАН
+  стоять ПЕРЕД `platforms`. (3) DMG/`.app`-фаза (T-37): при ручной
+  сборке app-bundle перенести оба lproj в `Contents/Resources/` —
+  smoke 8.4 п.10 проверит RU-подстановку живьём. (4) Формат-ключи =
+  спецификаторы на МЕСТЕ вызова: Int → `%lld`, String/enum/Bool → `%@`
+  (порядок аргументов неприкосновенен); Int32 неоднозначен
+  (`ShellSession.exitCode`) → сайт переписан на `Int(...)`; форматные
+  `String(format:)`-сайты — PLAIN ключ с форматами в VALUE
+  (`menu.hotSlotBookmark` = «[%ld] %@»). (5) Косвенные ключи — четыре
+  пути в сканере: `titleKey`-спеки MenuBuilder (38 пунктов + 5 секций),
+  кортежи `(CommandID…)`/`(ColumnID…)` с `LocalizationValue` (колонки
+  conflict/search), тернарник `String(localized: deselecting ? …`
+  (сбор литералов ±2 строки). (6) Lint `Tools/localization-check.sh`:
+  15 UI-паттернов, буква в литерале (`isalpha`) = fail; inline-исключение
+  `// l10n-allow` (использован для шаблона `[N]`); первые прогоны поймали
+  фантомы (SF-символы `lock.fill`, a11y-идентификаторы `mc.*`) — скан
+  сужен до line-based контрактов вместо file-wide key-shaped.
+  (7) Интегрити-тест `LocalizationStringsTests` ×2 (`loc` name-space):
+  en/ru parity + двустороння сверка ключей + формат-префикс ↔
+  интерполяция; урок парсера: symlink-сайт роняет хвост `)` в префикс —
+  нормализация `[\s)]+$` в обоих чекерах. (8) Локализованы хардкодные
+  сайты: `"\(record.name): …"` → `progress.failureDetail`; строка
+  счётчиков sync → `sync.countFormat`; hot-slot меню →
+  `menu.hotSlotBookmark`; `commandBar.console.exitCode` Int32 → Int.
+  (9) Гейты: build 0 warnings; Debug ×2 — exit 0 / 0 issues; Release —
+  ретрай-политика §8.5 сработала впервые (как в T-34): попытка 1 — 8
+  перф-slip (load 6.7+), попытка 2 — 3 (load 6.6), попытка 3 — 0 → GREEN;
+  license-check OK; localization-check OK (281 ключей, 0 hardcoded).
+
 ### T-36. Темы довести до релиза (F-23), полиш диалогов/badges
 ### T-37. Релиз-инженерия: Sparkle, DMG+notarization, GitHub Releases, README/help, NOTICE-проверка, beta-канал
 ### T-38. Бета-цикл: сбор фидбек, краш-фиксы, замер crash-free ≥ 99.5 %

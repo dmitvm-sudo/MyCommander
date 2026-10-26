@@ -61,7 +61,11 @@ final class SyncDialogController: NSObject, NSTableViewDataSource, NSTableViewDe
         mirrorCheck.target = self
         mirrorCheck.action = #selector(optionChanged)
 
-        let summaryCounts = "\(report.count(.onlyA)) / \(report.count(.onlyB)) / \(report.count(.differing)) / \(report.count(.equal))"
+        let summaryCounts = String(
+            format: String(localized: "sync.countFormat"),
+            report.count(.onlyA), report.count(.onlyB),
+            report.count(.differing), report.count(.equal)
+        )
         summaryLabel.stringValue = String(localized: "sync.summary \(summaryCounts)")
 
         let actionColumn = NSTableColumn(identifier: ColumnID.action)

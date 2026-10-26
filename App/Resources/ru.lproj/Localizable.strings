@@ -1,0 +1,334 @@
+/* F-22 (T-35): мастер-каталог UI — RU. Разрешение через Bundle.main
+   (см. docs/SDD/08 §8.1, уточнение T-35). Формат-ключи несут спецификаторы
+   из интерполяции на местах вызова; порядок %/аргументов неприкосновенен. */
+
+/* Статусные бейджи доступа */
+"access.badge.full" = "Полный доступ";
+"access.badge.restricted" = "Ограничен";
+"access.badge.safe %@" = "Безопасный режим: %@";
+
+/* Командная строка / консоль */
+"commandBar.console.exitCode %lld" = "Код выхода: %lld";
+"commandBar.error.missingArgument %@" = "Не указан аргумент команды %@";
+"commandBar.error.missingArgument !" = "Не указан аргумент: имя после !";
+"commandBar.error.missingArgument cd" = "Не указан аргумент команды cd";
+"commandBar.error.missingArgument mkdir" = "Не указан аргумент команды mkdir";
+"commandBar.error.missingArgument open" = "Не указан аргумент команды open";
+"commandBar.error.mkdirNesting %@" = "mkdir внутри не-каталога: %@";
+"commandBar.error.pathNotFound %@" = "Путь не найден: %@";
+"commandBar.error.shellLocalOnly" = "Оболочка работает только для локальных каталогов";
+"commandBar.error.unknownCommand %@" = "Неизвестная команда: %@";
+"commandBar.placeholder" = "Введите команду…";
+"commandBar.prompt" = "Команда:";
+"commandBar.prompt %@" = "%@";
+
+/* Диалог конфликтов */
+"conflict.all.keepBoth" = "Всем: сохранить оба";
+"conflict.all.overwrite" = "Всем: заменить";
+"conflict.all.skip" = "Всем: пропустить";
+"conflict.cancel" = "Отмена";
+"conflict.column.name" = "Имя";
+"conflict.column.resolution" = "Действие";
+"conflict.column.source" = "Источник";
+"conflict.column.target" = "Цель";
+"conflict.continue" = "Продолжить";
+"conflict.preview.absent" = "— отсутствует —";
+"conflict.preview.folder" = "Папка";
+"conflict.resolution.keepBoth" = "Сохранить оба";
+"conflict.resolution.overwrite" = "Заменить";
+"conflict.resolution.skip" = "Пропустить";
+"conflict.title" = "Конфликты";
+
+/* Окно соединений */
+"connections.add" = "Добавить";
+"connections.auth" = "Аутентификация";
+"connections.auth.password" = "Пароль";
+"connections.auth.privateKey" = "Приватный ключ";
+"connections.column.name" = "Имя";
+"connections.connect" = "Подключить";
+"connections.delete" = "Удалить";
+"connections.failure.title" = "Не удалось подключиться";
+"connections.host" = "Хост";
+"connections.hostkey.abort" = "Прервать";
+"connections.hostkey.changed.title" = "Ключ хоста изменился!";
+"connections.hostkey.firstUse.title" = "Первое подключение";
+"connections.hostkey.retrust" = "Доверять новому ключу";
+"connections.hostkey.trust" = "Доверять";
+"connections.key" = "Ключ";
+"connections.key.browse" = "Обзор…";
+"connections.name" = "Имя";
+"connections.passphrase.placeholder" = "Необязательная фраза-пароль";
+"connections.password.placeholder" = "Хранится в Keychain";
+"connections.port" = "Порт";
+"connections.save" = "Сохранить";
+"connections.title" = "Соединения";
+"connections.untitled" = "Без имени";
+"connections.username" = "Пользователь";
+
+/* Диалог маски (F-3) */
+"dialog.mask.apply" = "Применить";
+"dialog.mask.cancel" = "Отмена";
+"dialog.mask.deselect" = "Снять выделение по маске";
+"dialog.mask.placeholder" = "Маска (напр. *.txt)";
+"dialog.mask.select" = "Выделить по маске";
+
+/* Перетаскивание */
+"drop.error.unsupportedSource" = "Перетаскивание из этого источника недоступно";
+
+/* Информация */
+"info.copy" = "Копировать";
+"info.field.created" = "Создан";
+"info.field.group" = "Группа";
+"info.field.kind" = "Тип";
+"info.field.modified" = "Изменён";
+"info.field.name" = "Имя";
+"info.field.owner" = "Владелец";
+"info.field.permissions" = "Права";
+"info.field.size" = "Размер";
+"info.field.tags" = "Метки";
+"info.kind.directory" = "Папка";
+"info.kind.file" = "Файл";
+"info.kind.special" = "Специальный";
+"info.kind.symlink %@" = "Символическая ссылка → %@";
+"info.kind.symlinkDangling" = "Битая ссылка";
+"info.title %@" = "Информация — %@";
+
+/* Просмотр (F-3) */
+"lister.error" = "Ошибка загрузки";
+"lister.mode.hex" = "HEX";
+"lister.mode.image" = "Изображение";
+"lister.mode.text" = "Текст";
+"lister.status %@ %@ %@" = "%@ из %@ · %@";
+"lister.title %@" = "Просмотр — %@";
+
+/* Закладки */
+"locations.column.name" = "Имя";
+"locations.delete" = "Удалить";
+"locations.go" = "Перейти";
+"locations.recents" = "Недавние папки";
+"locations.slot" = "Слот";
+"locations.slot.none" = "—";
+"locations.title" = "Закладки";
+"locations.untitledRoot" = "(корень)";
+
+/* Главное меню */
+"menu.appName" = "MyCommander";
+"menu.bookmarkAdd" = "Добавить в закладки";
+"menu.closeTab" = "Закрыть вкладку";
+"menu.commandBar" = "Командная строка";
+"menu.comparePanels" = "Сравнить панели";
+"menu.connectSftp" = "Подключиться SFTP…";
+"menu.copyFiles" = "Копировать";
+"menu.deleteFiles" = "Удалить";
+"menu.deselectMasked" = "Снять выделение по маске…";
+"menu.editFile" = "Редактировать файл";
+"menu.focusLeft" = "Левая панель";
+"menu.focusRight" = "Правая панель";
+"menu.go" = "Переход";
+"menu.home" = "Домой";
+"menu.hotSlotBookmark" = "[%ld] %@";
+"menu.hotSlotFormat" = "Слот %ld";
+"menu.insertPath" = "Вставить путь в терминал";
+"menu.invertSelection" = "Инвертировать выделение";
+"menu.itemInfo" = "Свойства";
+"menu.locations" = "Закладки…";
+"menu.miniaturize" = "Свернуть";
+"menu.moveFiles" = "Переместить";
+"menu.multiRename" = "Групповое переименование";
+"menu.newTab" = "Новая вкладка";
+"menu.nextTab" = "Следующая вкладка";
+"menu.openSettings" = "Настройки…";
+"menu.navigateBack" = "Назад";
+"menu.navigateForward" = "Вперёд";
+"menu.openLocations" = "Все закладки…";
+"menu.operations" = "Операции";
+"menu.packFiles" = "Упаковать";
+"menu.parentDirectory" = "На уровень выше";
+"menu.previousTab" = "Предыдущая вкладка";
+"menu.quickLook" = "Быстрый просмотр";
+"menu.quit" = "Завершить MyCommander";
+"menu.reload" = "Обновить";
+"menu.reopenClosedTab" = "Вернуть закрытую вкладку";
+"menu.restoreSelection" = "Восстановить выделение";
+"menu.searchFiles" = "Поиск файлов";
+"menu.selectAll" = "Выделить всё";
+"menu.selectMasked" = "Выделить по маске…";
+"menu.selection" = "Выделение";
+"menu.swapPanels" = "Поменять панели";
+"menu.tabs" = "Вкладки";
+"menu.terminal" = "Терминал";
+"menu.undo" = "Отменить";
+"menu.view" = "Вид";
+"menu.viewBrief" = "Кратко";
+"menu.viewColumns" = "Колонки";
+"menu.viewFile" = "Просмотр файла";
+"menu.viewFull" = "Полно";
+"menu.viewThumbnails" = "Миниатюры";
+"menu.window" = "Окно";
+"menu.zoom" = "Масштаб окна";
+
+/* Онбординг (F-20) */
+"onboarding.body" = "MyCommander читает файлы вне песочницы только при выданном Full Disk Access. Без него приложение работает в безопасном режиме (Рабочий стол, Документы, Загрузки).";
+"onboarding.continueWithout" = "Продолжить без полного доступа";
+"onboarding.headline" = "Дайте доступ к диску";
+"onboarding.hide" = "Скрыть";
+"onboarding.openSettings" = "Открыть Системные настройки";
+"onboarding.title" = "Доступ";
+
+/* Упаковка (F-12) */
+"pack.cancel" = "Отмена";
+"pack.compression" = "Сжатие";
+"pack.compression.deflate" = "Deflate";
+"pack.compression.store" = "Store";
+"pack.defaultName" = "Архив.zip";
+"pack.name" = "Имя архива";
+"pack.name.placeholder" = "напр. backup.zip";
+"pack.ok" = "Упаковать";
+"pack.onlyLocalDestination" = "Упаковка поддерживается только в локальные каталоги";
+"pack.title" = "Упаковка";
+
+/* Строка статуса панели */
+"panel.status.error %@" = "Ошибка: %@";
+"panel.status.filter %@" = "Фильтр: %@";
+
+/* Прогресс операций */
+"progress.cancel" = "Отмена";
+"progress.failureDetail" = "%@: %@";
+"progress.failed %@" = "Ошибка: %@";
+"progress.pause" = "Пауза";
+"progress.resume" = "Продолжить";
+"progress.starting %lld" = "Запуск… объектов: %lld";
+"progress.title" = "Прогресс операции";
+
+/* Групповое переименование (F-14) */
+"rename.apply" = "Применить";
+"rename.cancel" = "Отмена";
+"rename.case" = "Регистр";
+"rename.case.lowercase" = "строчные";
+"rename.case.unchanged" = "как есть";
+"rename.case.uppercase" = "ПРОПИСНЫЕ";
+"rename.column.new" = "Новое имя";
+"rename.column.old" = "Старое имя";
+"rename.counter" = "Счётчик";
+"rename.counter.pad" = "нули";
+"rename.counter.start" = "начало";
+"rename.counter.step" = "шаг";
+"rename.ext" = "Расширение";
+"rename.ext.keep" = "Сохранить";
+"rename.ext.remove" = "Удалить";
+"rename.ext.replace" = "Заменить на…";
+"rename.find" = "Найти";
+"rename.regex" = "RegEx";
+"rename.template" = "Шаблон";
+"rename.title" = "Групповое переименование";
+
+/* Отчёты (F-5/F-14) */
+"report.reason %@" = "Причина: %@";
+"report.summary %lld %lld %lld" = "Готово: %lld · пропущено: %lld · ошибок: %lld";
+
+/* Поиск (F-16) */
+"search.caseSensitive" = "Учитывать регистр";
+"search.close" = "Закрыть";
+"search.column.matches" = "Совпадения";
+"search.column.name" = "Имя";
+"search.column.size" = "Размер";
+"search.content" = "Содержимое";
+"search.limit" = "Лимит";
+"search.mask" = "Маска";
+"search.regex" = "RegEx";
+"search.results.folder" = "Результаты поиска";
+"search.size" = "Размер (КБ)";
+"search.size.max" = "макс";
+"search.size.min" = "мин";
+"search.start" = "Искать";
+"search.status.canceled %lld" = "Поиск отменён · совпадений: %lld";
+"search.status.done %lld %@" = "Совпадений: %lld %@";
+"search.status.failed" = "Ошибка поиска";
+"search.status.hits %lld" = "Совпадений: %lld";
+"search.status.idle" = "Введите маску и нажмите «Искать»";
+"search.status.running" = "Идёт поиск…";
+"search.status.truncated" = "(усечено)";
+"search.title" = "Поиск файлов";
+"search.toPanel" = "Отправить в панель";
+
+/* Настройки (F-21) */
+"settings.appearance.family" = "Семейство шрифта";
+"settings.appearance.mono" = "Моноширинный";
+"settings.appearance.theme" = "Тема";
+"settings.archive.autoMount" = "Монтировать архивы при открытии";
+"settings.deletion.confirm" = "Подтверждать удаление";
+"settings.deletion.confirm.cancel" = "Отмена";
+"settings.deletion.confirm.message %lld" = "Удалить объектов: %lld? Отмена доступна в журнале.";
+"settings.deletion.confirm.ok" = "Удалить";
+"settings.editor.browse" = "Обзор…";
+"settings.editor.placeholder" = "Путь к внешнему редактору";
+"settings.export" = "Экспорт…";
+"settings.import" = "Импорт…";
+"settings.reset" = "Сбросить настройки";
+"settings.section.appearance" = "Внешний вид";
+"settings.section.archive" = "Архивы";
+"settings.section.deletion" = "Удаление";
+"settings.section.editor" = "Редактор";
+"settings.section.terminal" = "Терминал";
+"settings.section.view" = "Вид";
+"settings.terminal.autoCd" = "cd вслед за панелями";
+"settings.theme.dark" = "Тёмная";
+"settings.theme.light" = "Светлая";
+"settings.theme.ncBlue" = "NC синяя";
+"settings.theme.system" = "Системная";
+"settings.title" = "Настройки";
+"settings.view.columns.placeholder" = "Колонки, напр. name,size";
+"settings.view.style" = "Стиль фильтра";
+"settings.view.style.fuzzy" = "Нечёткий";
+"settings.view.style.substring" = "Подстрока";
+
+/* Синхронизация (F-15) */
+"sync.action.copyAToB" = "Копировать A → B";
+"sync.action.copyBToA" = "Копировать B → A";
+"sync.action.deleteInA" = "Удалить в A";
+"sync.action.deleteInB" = "Удалить в B";
+"sync.apply" = "Применить";
+"sync.cancel" = "Отмена";
+"sync.column.action" = "Действие";
+"sync.column.path" = "Путь";
+"sync.confirm.body %lld %@ %@" = "Применить действий: %lld (%@ → %@)";
+"sync.confirm.title" = "Подтверждение";
+"sync.countFormat" = "%ld / %ld / %ld / %ld";
+"sync.direction" = "Направление";
+"sync.direction.aToB" = "A → B";
+"sync.direction.bToA" = "B → A";
+"sync.mirror" = "Зеркально";
+"sync.summary %@" = "Сводка: %@";
+"sync.title" = "Сравнение папок";
+
+/* Хром вкладок */
+"tab.close" = "Закрыть вкладку";
+"tab.lock" = "Закрепить панель";
+
+/* Бейджи строк списка */
+"cell.badge.hidden" = "Скрытый элемент";
+"cell.badge.locked" = "Защищённый элемент";
+"cell.badge.symlink" = "Символическая ссылка";
+"cell.kind.folder" = "Папка";
+
+/* Колонки */
+"column.dateCreated" = "Создан";
+"column.dateModified" = "Изменён";
+"column.kind" = "Тип";
+"column.name" = "Имя";
+"column.owner" = "Владелец";
+"column.permissions" = "Права";
+"column.size" = "Размер";
+"column.tags" = "Метки";
+"column.thumbnails" = "Миниатюры";
+
+/* Терминал */
+"terminal.cdToDirectory" = "cd в каталог панели";
+"terminal.error.pasteLocalOnly" = "Вставка путей доступна только для локальных панелей";
+"terminal.insertPanelPath" = "Вставить путь панели (⌃⇧V)";
+
+/* Undo */
+"undo.unavailable" = "Нечего отменять";
+
+/* Главное окно */
+"window.title" = "MyCommander";

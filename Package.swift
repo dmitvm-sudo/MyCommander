@@ -105,6 +105,7 @@ let executable: Target = .executableTarget(
 
 let package = Package(
     name: "MyCommander",
+    defaultLocalization: "en",
     platforms: [.macOS(.v14)],
     dependencies: dependencies,
     targets: libraries + [executable] + testTargets

@@ -29,7 +29,7 @@ final class MultiRenameDialogController: NSObject, NSTableViewDataSource, NSTabl
     // Internal (T-34): the headless tests drive these directly — the dialog
     // is UI glue over the pure planner, exposing its controls is the test
     // seam (the smoke 8.4 п.8 visual part stays manual).
-    let templateField = NSTextField(string: "[N]")
+    let templateField = NSTextField(string: "[N]")   // l10n-allow: universal token
     let findField = NSTextField()
     let replacementField = NSTextField()
     let regexCheck = NSButton(checkboxWithTitle: String(localized: "rename.regex"), target: nil, action: nil)
