@@ -171,9 +171,9 @@ public enum RenamePlanner {
     /// 06 §6.6 «sort для стабильности»): same-volume rename(2) inside the
     /// executor, journal `renameBack` → undo (F-6) rides the unified queue.
     public static func buildTransferPlan(pairs: [RenamePair], in parent: VFSPath) -> TransferPlan {
-        let sorted = pairs.enumerated().sorted { $0.element.item.name.localizedStandardCompare($1.element.item.name) == .orderedAscending }
+        let sorted = pairs.sorted { $0.item.name.localizedStandardCompare($1.item.name) == .orderedAscending }
         var items: [TransferItem] = []
-        for (_, pair) in sorted {
+        for pair in sorted {
             let target = VFSPath(root: parent.root, components: parent.components + [pair.newName])
             items.append(TransferItem(source: pair.item.id, target: target, item: pair.item))
         }

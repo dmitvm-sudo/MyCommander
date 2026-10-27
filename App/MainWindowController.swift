@@ -70,7 +70,7 @@ final class MainWindowController: NSWindowController {
 
             commandBar.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
             commandBar.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-            commandBar.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
+            commandBar.bottomAnchor.constraint(equalTo: contentView.bottomAnchor)
         ])
 
         // T-31 wiring (06 §6.8): the coordinator spawns TerminalPane here at

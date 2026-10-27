@@ -56,7 +56,10 @@ public enum MoveTransaction {
         }
 
         // Cross-volume / VFS-generic: recursive copy+delete.
-        return try await moveRecursively(transfer, source: source, destination: destination, gate: gate, progress: progress, volumeKey: volumeKey, chunkDelay: chunkDelay)
+        return try await moveRecursively(
+            transfer, source: source, destination: destination, gate: gate,
+            progress: progress, volumeKey: volumeKey, chunkDelay: chunkDelay
+        )
     }
 
     /// Volume key with the default statfs provider standing in for `nil`.
@@ -64,7 +67,8 @@ public enum MoveTransaction {
         provider?(url) ?? posixVolumeKey(for: url)
     }
 
-    private static func moveRecursively(        _ transfer: TransferItem,
+    private static func moveRecursively(
+        _ transfer: TransferItem,
         source: any VFS,
         destination: any VFS,
         gate: OperationGate?,
@@ -90,7 +94,10 @@ public enum MoveTransaction {
                     target: transfer.target.appending(component: child.name),
                     item: child
                 )
-                let outcome = try await moveRecursively(childTransfer, source: source, destination: destination, gate: gate, progress: progress, volumeKey: volumeKey, chunkDelay: chunkDelay)
+                let outcome = try await moveRecursively(
+                    childTransfer, source: source, destination: destination, gate: gate,
+                    progress: progress, volumeKey: volumeKey, chunkDelay: chunkDelay
+                )
                 switch outcome {
                 case .renamed:
                     files += 1   // a nested same-geometry rename still counts as one moved unit

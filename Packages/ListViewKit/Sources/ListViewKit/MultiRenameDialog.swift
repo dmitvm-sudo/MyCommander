@@ -78,7 +78,7 @@ final class MultiRenameDialogController: NSObject, NSTableViewDataSource, NSTabl
         casePopup.addItems(withTitles: [
             String(localized: "rename.case.unchanged"),
             String(localized: "rename.case.lowercase"),
-            String(localized: "rename.case.uppercase"),
+            String(localized: "rename.case.uppercase")
         ])
         let caseRow = NSStackView(views: [NSTextField(labelWithString: String(localized: "rename.case")), casePopup])
         caseRow.orientation = .horizontal
@@ -86,21 +86,21 @@ final class MultiRenameDialogController: NSObject, NSTableViewDataSource, NSTabl
         extensionPopup.addItems(withTitles: [
             String(localized: "rename.ext.keep"),
             String(localized: "rename.ext.replace"),
-            String(localized: "rename.ext.remove"),
+            String(localized: "rename.ext.remove")
         ])
         extensionPopup.target = self
         extensionPopup.action = #selector(ruleChanged)
         let extensionRow = NSStackView(views: [
             NSTextField(labelWithString: String(localized: "rename.ext")),
             extensionPopup,
-            extensionField,
+            extensionField
         ])
         extensionRow.orientation = .horizontal
         extensionField.widthAnchor.constraint(equalToConstant: 90).isActive = true
 
         let counterRow = NSStackView(views: [
             NSTextField(labelWithString: String(localized: "rename.counter")),
-            startField, stepField, padField,
+            startField, stepField, padField
         ])
         counterRow.orientation = .horizontal
         startField.placeholderString = String(localized: "rename.counter.start")
@@ -143,7 +143,7 @@ final class MultiRenameDialogController: NSObject, NSTableViewDataSource, NSTabl
             layout.trailingAnchor.constraint(equalTo: window.contentView!.trailingAnchor, constant: -14),
             layout.topAnchor.constraint(equalTo: window.contentView!.topAnchor, constant: 14),
             layout.bottomAnchor.constraint(equalTo: window.contentView!.bottomAnchor, constant: -14),
-            scroll.heightAnchor.constraint(equalToConstant: 220),
+            scroll.heightAnchor.constraint(equalToConstant: 220)
         ])
 
         // Live preview on every rule edit.

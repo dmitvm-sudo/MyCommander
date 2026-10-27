@@ -82,7 +82,7 @@ final class SettingsWindowController: NSWindowController {
             String(localized: "settings.theme.system"),
             String(localized: "settings.theme.light"),
             String(localized: "settings.theme.dark"),
-            String(localized: "settings.theme.ncBlue"),
+            String(localized: "settings.theme.ncBlue")
         ])
         let themeStack = NSStackView(views: [themeLabel, themePopup])
         themeStack.orientation = .horizontal
@@ -91,7 +91,7 @@ final class SettingsWindowController: NSWindowController {
 
         fontFamilyCombo.completes = true
         fontFamilyCombo.addItems(withObjectValues: [
-            "SF Mono", "Menlo", "Monaco", "Andale Mono", "Courier New",
+            "SF Mono", "Menlo", "Monaco", "Andale Mono", "Courier New"
         ])
         fontFamilyCombo.target = self
         fontFamilyCombo.action = #selector(fontFamilyChanged(_:))
@@ -127,7 +127,7 @@ final class SettingsWindowController: NSWindowController {
         filterStylePopup.action = #selector(filterStyleChanged(_:))
         filterStylePopup.addItems(withTitles: [
             String(localized: "settings.view.style.substring"),
-            String(localized: "settings.view.style.fuzzy"),
+            String(localized: "settings.view.style.fuzzy")
         ])
         let styleStack = NSStackView(views: [styleLabel, filterStylePopup])
         styleStack.orientation = .horizontal
@@ -182,7 +182,7 @@ final class SettingsWindowController: NSWindowController {
 
         let stack = NSStackView(views: [
             appearanceSection, deletionSection, editorSection,
-            viewSection, archiveSection, terminalSection, footer,
+            viewSection, archiveSection, terminalSection, footer
         ])
         stack.orientation = .vertical
         stack.alignment = .leading
@@ -198,7 +198,7 @@ final class SettingsWindowController: NSWindowController {
             columnsField.widthAnchor.constraint(equalToConstant: 260),
             filterStylePopup.widthAnchor.constraint(equalToConstant: 150),
             themePopup.widthAnchor.constraint(equalToConstant: 150),
-            fontFamilyCombo.widthAnchor.constraint(equalToConstant: 160),
+            fontFamilyCombo.widthAnchor.constraint(equalToConstant: 160)
         ])
     }
 

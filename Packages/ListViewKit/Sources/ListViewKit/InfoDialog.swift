@@ -222,7 +222,7 @@ public final class InfoWindowController: NSWindowController {
             stack.trailingAnchor.constraint(equalTo: window.contentView!.trailingAnchor, constant: -12),
             stack.topAnchor.constraint(equalTo: window.contentView!.topAnchor, constant: 12),
             stack.bottomAnchor.constraint(equalTo: window.contentView!.bottomAnchor, constant: -12),
-            copyButton.leadingAnchor.constraint(equalTo: row.leadingAnchor),
+            copyButton.leadingAnchor.constraint(equalTo: row.leadingAnchor)
         ])
         refresh()
     }

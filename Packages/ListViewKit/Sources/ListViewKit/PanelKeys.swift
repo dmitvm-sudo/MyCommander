@@ -106,8 +106,7 @@ enum PanelKeys {
         if modifiers.isEmpty, let characters,
            let character = characters.first,
            character != " ",
-           character.unicodeScalars.allSatisfy({ $0.value >= 0x20 && $0.value < 0xE000 })
-        {
+           character.unicodeScalars.allSatisfy({ $0.value >= 0x20 && $0.value < 0xE000 }) {
             return .filterCharacter(character)
         }
         return .passToSuper

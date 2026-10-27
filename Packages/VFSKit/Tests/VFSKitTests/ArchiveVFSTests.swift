@@ -61,7 +61,7 @@ private func cachedNames(_ dir: URL) -> [String] {
 private func goldenTarData() throws -> Data {
     let entries = [
         TarEntry(info: TarEntryInfo(name: "one.txt", type: .regular), data: Data("tar-one\n".utf8)),
-        TarEntry(info: TarEntryInfo(name: "sub/deep.txt", type: .regular), data: Data("deep\n".utf8)),
+        TarEntry(info: TarEntryInfo(name: "sub/deep.txt", type: .regular), data: Data("deep\n".utf8))
     ]
     return TarContainer.create(from: entries, force: TarContainer.Format.ustar)
 }

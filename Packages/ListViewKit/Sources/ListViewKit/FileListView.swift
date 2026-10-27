@@ -327,7 +327,7 @@ public final class FileListView: NSView {
             stack.topAnchor.constraint(equalTo: topAnchor, constant: 4),
             stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -4),
             scrollView.widthAnchor.constraint(equalTo: stack.widthAnchor),
-            statusLine.heightAnchor.constraint(equalToConstant: 16),
+            statusLine.heightAnchor.constraint(equalToConstant: 16)
         ])
     }
 

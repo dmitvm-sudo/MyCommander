@@ -31,7 +31,7 @@ private func sessionTempURL(_ testName: String) -> URL {
                     selection: [file],
                     historyBack: [root],
                     historyForward: []
-                ),
+                )
             ],
             activeIndex: 0
         ),
@@ -75,7 +75,9 @@ private func sessionTempURL(_ testName: String) -> URL {
 
     // Rewrite the file with a future schema version.
     var encoded = try JSONEncoder().encode(snapshot)
-    var object = try JSONSerialization.jsonObject(with: encoded) as! [String: Any]
+    var object = try #require(
+        try JSONSerialization.jsonObject(with: encoded) as? [String: Any]
+    )
     object["schemaVersion"] = SessionSnapshot.schemaVersion + 1
     encoded = try JSONSerialization.data(withJSONObject: object)
     try encoded.write(to: url)

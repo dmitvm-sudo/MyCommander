@@ -83,12 +83,20 @@ public enum CopyTransaction {
             try await materializeDirectory(transfer, destination: destination)
         case .file, .special:
             try await ensureAncestors(transfer.target, destination: destination)
-            try await copyFile(transfer, source: source, destination: destination, preference: preference, gate: gate, progress: progress, volumeKey: volumeKey, chunkDelay: chunkDelay)
+            try await copyFile(
+                transfer, source: source, destination: destination,
+                preference: preference, gate: gate, progress: progress,
+                volumeKey: volumeKey, chunkDelay: chunkDelay
+            )
         case .symlink:
             // T-10 каркас: symlinks are copied by content (openRead follows).
             // Real link preservation arrives with the T-11 attribute pass.
             try await ensureAncestors(transfer.target, destination: destination)
-            try await copyFile(transfer, source: source, destination: destination, preference: preference, gate: gate, progress: progress, volumeKey: volumeKey, chunkDelay: chunkDelay)
+            try await copyFile(
+                transfer, source: source, destination: destination,
+                preference: preference, gate: gate, progress: progress,
+                volumeKey: volumeKey, chunkDelay: chunkDelay
+            )
         }
     }
 
@@ -210,7 +218,9 @@ public enum CopyTransaction {
         var posixCode = code
         if nsError.domain == NSCocoaErrorDomain, code > 255 {
             posixCode = code - 256
-        } else if nsError.domain == NSCocoaErrorDomain, let underlying = nsError.userInfo[NSUnderlyingErrorKey] as? NSError, underlying.domain == NSPOSIXErrorDomain {
+        } else if nsError.domain == NSCocoaErrorDomain,
+                  let underlying = nsError.userInfo[NSUnderlyingErrorKey] as? NSError,
+                  underlying.domain == NSPOSIXErrorDomain {
             posixCode = underlying.code
         }
         switch posixCode {
@@ -332,8 +342,7 @@ public enum CopyTransaction {
         var offset = 0
         if let attributes = try? fm.attributesOfItem(atPath: tempURL.path),
            let partialSize = (attributes[.size] as? NSNumber)?.intValue,
-           partialSize > 0, partialSize < sourceSize
-        {
+           partialSize > 0, partialSize < sourceSize {
             offset = partialSize
         }
 

@@ -44,7 +44,7 @@ final class NameCell: NSTableCellView {
             textLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
             textLabel.trailingAnchor.constraint(lessThanOrEqualTo: badgeLabel.leadingAnchor, constant: -4),
             badgeLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -5),
-            badgeLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
+            badgeLabel.centerYAnchor.constraint(equalTo: centerYAnchor)
         ])
     }
 
@@ -106,7 +106,7 @@ final class MetaCell: NSTableCellView {
         NSLayoutConstraint.activate([
             textLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 3),
             textLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -3),
-            textLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
+            textLabel.centerYAnchor.constraint(equalTo: centerYAnchor)
         ])
     }
 
@@ -209,7 +209,7 @@ final class ThumbnailCell: NSTableCellView {
             thumbView.centerXAnchor.constraint(equalTo: centerXAnchor),
             thumbView.centerYAnchor.constraint(equalTo: centerYAnchor),
             thumbView.widthAnchor.constraint(equalToConstant: 40),
-            thumbView.heightAnchor.constraint(equalToConstant: 40),
+            thumbView.heightAnchor.constraint(equalToConstant: 40)
         ])
     }
 

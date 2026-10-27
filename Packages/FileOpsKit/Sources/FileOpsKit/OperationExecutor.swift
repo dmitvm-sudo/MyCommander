@@ -219,7 +219,13 @@ public actor OperationExecutor: OperationExecutorProtocol {
             // (`VFS.createDirectory`); a planned `.mkdir` never executes as a
             // transfer — every item fails visibly (06 §6.2 уточнение T-20).
             for index in plan.items.indices {
-                await failItem(run, index: index, error: .vfsUnsupported(plan.items[index].source.root, "mkdir operations are not executed by the transfer engine"))
+                await failItem(
+                    run, index: index,
+                    error: .vfsUnsupported(
+                        plan.items[index].source.root,
+                        "mkdir operations are not executed by the transfer engine"
+                    )
+                )
             }
         case .packZip:
             // F-12 pack (T-22/06 §6.2): ONE zip artifact per plan; no item
@@ -264,7 +270,7 @@ public actor OperationExecutor: OperationExecutorProtocol {
             for _ in 0 ..< min(maxConcurrentItems, plan.items.count) {
                 spawnNext()
             }
-            while let _ = await group.next() {
+            while await group.next() != nil {
                 if Task.isCancelled { break }
                 spawnNext()
             }
@@ -520,8 +526,12 @@ public actor OperationExecutor: OperationExecutorProtocol {
             case .targetExists:
                 switch policy.resolve(for: transfer.target) {
                 case .overwrite:
-                    do { try await run.destination.delete([transfer.target], toTrash: false) }
-                    catch { await failItem(run, index: index, error: normalize(error)); return nil }
+                    do {
+                        try await run.destination.delete([transfer.target], toTrash: false)
+                    } catch {
+                        await failItem(run, index: index, error: normalize(error))
+                        return nil
+                    }
                 case .skip:
                     run.summary.startedItems += 1
                     run.summary.skippedItems += 1
@@ -570,7 +580,7 @@ public actor OperationExecutor: OperationExecutorProtocol {
             for _ in 0 ..< min(maxConcurrentItems, indices.count) {
                 spawnNext()
             }
-            while let _ = await group.next() {
+            while await group.next() != nil {
                 if Task.isCancelled { break }
                 spawnNext()
             }

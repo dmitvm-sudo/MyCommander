@@ -50,7 +50,7 @@ private func fsSelectionNames(of vm: PanelViewModel) -> [String] {
         fsItem(root: root, name: "report.txt"),
         fsItem(root: root, name: "photo.png"),
         fsItem(root: root, name: "notes.txt"),
-        fsItem(root: root, name: "archive.zip"),
+        fsItem(root: root, name: "archive.zip")
     ], at: nil)
 
     vm.setFilter("txt")
@@ -68,7 +68,7 @@ private func fsSelectionNames(of vm: PanelViewModel) -> [String] {
     vm.setItems([
         fsItem(root: root, name: "a1.txt"),
         fsItem(root: root, name: "a2.txt"),
-        fsItem(root: root, name: "b1.png"),
+        fsItem(root: root, name: "b1.png")
     ], at: nil)
 
     var deltas = 0
@@ -99,7 +99,7 @@ private func fsSelectionNames(of vm: PanelViewModel) -> [String] {
     let items = [
         fsItem(root: root, name: "a.txt"),
         fsItem(root: root, name: "b.png"),
-        fsItem(root: root, name: "c.txt"),
+        fsItem(root: root, name: "c.txt")
     ]
     vm.setItems(items, at: nil)
     vm.setSelection([items[0].id, items[2].id])
@@ -117,7 +117,7 @@ private func fsSelectionNames(of vm: PanelViewModel) -> [String] {
     let vm = PanelViewModel(source: InMemoryVFS())
     vm.setItems([
         fsItem(root: root, name: "zzz.txt"),
-        fsItem(root: root, name: "aaa.txt"),
+        fsItem(root: root, name: "aaa.txt")
     ], at: nil)
     vm.setCursor(1)
 
@@ -133,7 +133,7 @@ private func fsSelectionNames(of vm: PanelViewModel) -> [String] {
     let items = [
         fsItem(root: root, name: "a.png"),
         fsItem(root: root, name: "b.png"),
-        fsItem(root: root, name: "c.txt"),
+        fsItem(root: root, name: "c.txt")
     ]
     vm.setItems(items, at: nil)
 
@@ -168,7 +168,7 @@ private func fsSelectionNames(of vm: PanelViewModel) -> [String] {
     let vm = PanelViewModel(source: InMemoryVFS())
     let items = [
         fsItem(root: root, name: "a.txt"),
-        fsItem(root: root, name: "b.txt"),
+        fsItem(root: root, name: "b.txt")
     ]
     vm.setItems(items, at: nil)
 
@@ -186,7 +186,7 @@ private func fsSelectionNames(of vm: PanelViewModel) -> [String] {
     let vm = PanelViewModel(source: InMemoryVFS())
     let items = [
         fsItem(root: root, name: "keep.txt"),
-        fsItem(root: root, name: "vanish.txt"),
+        fsItem(root: root, name: "vanish.txt")
     ]
     vm.setItems(items, at: path)
     vm.setSelection([items[0].id, items[1].id])
@@ -238,7 +238,7 @@ private func fsSelectionNames(of vm: PanelViewModel) -> [String] {
     vm.filterStyle = .fuzzy
     vm.setItems([
         fsItem(root: root, name: "my-report-2026.txt"),
-        fsItem(root: root, name: "photo.png"),
+        fsItem(root: root, name: "photo.png")
     ], at: nil)
 
     vm.setFilter("mr2")   // m…r…2 subsequence of my-report-2026

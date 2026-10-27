@@ -354,7 +354,7 @@ public final class CommandBarView: NSView {
             stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
             stack.topAnchor.constraint(equalTo: topAnchor, constant: 4),
             stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -6),
-            consoleScroll.heightAnchor.constraint(equalToConstant: 130),
+            consoleScroll.heightAnchor.constraint(equalToConstant: 130)
         ])
 
         // The input line owns keyboard focus on activation; the bar itself is
@@ -389,7 +389,7 @@ public final class CommandBarView: NSView {
             string: text,
             attributes: [
                 .font: NSFont.monospacedSystemFont(ofSize: 11, weight: .regular),
-                .foregroundColor: isError ? NSColor.systemRed : NSColor.secondaryLabelColor,
+                .foregroundColor: isError ? NSColor.systemRed : NSColor.secondaryLabelColor
             ]
         )
         console.textStorage?.append(attributedText)

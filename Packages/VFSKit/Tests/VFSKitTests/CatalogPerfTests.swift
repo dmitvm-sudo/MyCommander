@@ -36,5 +36,6 @@ private func poFixtureURL() -> URL {
     let items = try await vfs.listDirectory(at: path)
     let elapsed = Date().timeIntervalSince(start)
     #expect(items.count == 10_000)
-    #expect(elapsed < 2.0, "10k catalog open took \(elapsed)s (honest register ≤ 0.3s P95; the in-test hold makes room for parallel neighbours doing heavy I/O)")
+    let hold = "the in-test hold makes room for parallel neighbours doing heavy I/O"
+    #expect(elapsed < 2.0, "10k catalog open took \(elapsed)s (honest register ≤ 0.3s P95; \(hold))")
 }

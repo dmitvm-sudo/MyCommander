@@ -73,7 +73,7 @@ public final class PanelViewController: NSViewController {
             container.topAnchor.constraint(equalTo: view.topAnchor, constant: 3),
             container.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -3),
             tabsView.widthAnchor.constraint(equalTo: container.widthAnchor),
-            fileListView.widthAnchor.constraint(equalTo: container.widthAnchor),
+            fileListView.widthAnchor.constraint(equalTo: container.widthAnchor)
         ])
     }
 

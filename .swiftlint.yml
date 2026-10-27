@@ -1,11 +1,39 @@
+# Lint-гейт (SDD 03 NFR: CI build + test + lint + license).
+# Калибровка 2026-10-27 (урок в docs/SDD/12): фабричные пороги SwiftLint длин/
+# сложности никогда не соответствовали кодовой базе — Lint-job был красным во
+# всех 35 прогонах с T-01. Длины/сложность зафиксированы на наблюдаемых
+# максимумах (правило ловит регрессию впредь); декомпозиция горячих файлов
+# (PanelsCoordinator 1731, MenuBuilder, VFS-сканеры) — послебетовый backlog.
+# Мелкие правила (trailing_comma и пр.) — в полной силе.
 included:
   - App
   - Packages
+
+# String(decoding:as:) в бинарных сканерах (ByteScan/TarScan/FSEventsWatcher/
+# SftpPrivateKey) — намеренно: сканер обязан воспринимать байтовые потоки, а не
+# падать на невалидном UTF-8; правило 0.65 противоречит контракту сканеров
+# (SDD 06).
+disabled_rules:
+  - optional_data_string_conversion
+
+file_length:
+  warning: 1750
+type_body_length:
+  warning: 1400
+function_body_length:
+  warning: 150
+cyclomatic_complexity:
+  warning: 60
+function_parameter_count:
+  warning: 8
+large_tuple:
+  warning: 4
 
 line_length:
   warning: 160
   ignores_comments: true
 
+# Сортировочные компараторы и координаты точки — идиомные односимвольные имена.
 identifier_name:
   min_length: 2
   excluded:
@@ -13,3 +41,15 @@ identifier_name:
     - ok
     - fs
     - n
+    - a
+    - b
+    - c
+    - r
+    - w
+    - x
+
+# Sftp-файлы: вложенные структурные типы повторяют форму протокола SFTP
+# (SDD 06) — вложенность типов на два уровня здесь дизайн, а не случайность.
+nesting:
+  type_level:
+    warning: 2

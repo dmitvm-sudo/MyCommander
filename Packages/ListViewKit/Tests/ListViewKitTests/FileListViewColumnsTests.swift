@@ -126,7 +126,7 @@ private func cltColumn(_ identifier: String) -> NSTableColumn {
     view.viewModel.setViewMode(.columns)
     view.applyColumnPreset([
         .name, .size, .dateModified, .dateCreated,
-        .kind, .tags, .permissions, .owner,
+        .kind, .tags, .permissions, .owner
     ])
 
     func text(_ column: String) -> String? {
@@ -172,7 +172,7 @@ private func cltColumn(_ identifier: String) -> NSTableColumn {
     let store = ThumbnailStore()
     let imageA = NSImage(size: NSSize(width: 40, height: 40))
     let imageB = NSImage(size: NSSize(width: 60, height: 60))
-    store.fakeGenerator = { url, size in
+    store.fakeGenerator = { url, _ in
         url.lastPathComponent == "a.png" ? imageA : imageB
     }
     let a = cltItem(name: "a.png")

@@ -29,7 +29,7 @@ public enum ListerMode: Sendable, Equatable {
     }
 
     static let imageExtensions: Set<String> = [
-        "bmp", "gif", "heic", "jpeg", "jpg", "png", "tif", "tiff", "webp",
+        "bmp", "gif", "heic", "jpeg", "jpg", "png", "tif", "tiff", "webp"
     ]
 
     private static func bytes(of data: Data) -> [UInt8] {
@@ -350,8 +350,7 @@ public final class ListerModel {
         // Encoding stays for the return trip; hex reuses the same offsets.
         let savedEncoding = savedTextEncoding
         mode = wasHex ? (savedEncoding == nil ? .hex : .text) : .hex
-        if !wasHex { savedTextEncoding = encoding }
-        else { encoding = savedEncoding }
+        if !wasHex { savedTextEncoding = encoding } else { encoding = savedEncoding }
         await reload(index: pageIndex)
     }
 
@@ -502,7 +501,7 @@ public final class ListerWindowController: NSWindowController {
             stack.topAnchor.constraint(equalTo: window.contentView!.topAnchor, constant: 8),
             stack.bottomAnchor.constraint(equalTo: window.contentView!.bottomAnchor, constant: -8),
             scroll.widthAnchor.constraint(equalTo: imageView.widthAnchor),
-            scroll.heightAnchor.constraint(equalTo: imageView.heightAnchor),
+            scroll.heightAnchor.constraint(equalTo: imageView.heightAnchor)
         ])
 
         textView.onCommand = { [weak self] command in

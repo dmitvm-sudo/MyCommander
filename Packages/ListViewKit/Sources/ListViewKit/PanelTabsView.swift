@@ -310,7 +310,7 @@ public final class PanelTabsView: NSView {
             stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 2),
             stack.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -2),
             stack.topAnchor.constraint(equalTo: topAnchor, constant: 2),
-            stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -2),
+            stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -2)
         ])
     }
 
@@ -387,7 +387,7 @@ final class TabCellView: NSView {
             row.topAnchor.constraint(equalTo: topAnchor),
             row.bottomAnchor.constraint(equalTo: bottomAnchor),
             lockImageView.widthAnchor.constraint(equalToConstant: 12),
-            closeButton.widthAnchor.constraint(equalToConstant: 14),
+            closeButton.widthAnchor.constraint(equalToConstant: 14)
         ])
     }
 

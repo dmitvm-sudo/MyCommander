@@ -33,7 +33,7 @@ private func makeItem(
         makeItem("b.txt"),
         makeItem("dirA", kind: .directory, size: 5),
         makeItem("a.txt"),
-        makeItem("dirB", kind: .directory, size: 9),
+        makeItem("dirB", kind: .directory, size: 9)
     ]
     let byNameDescending = items.sortedItems(by: [SortCriteria(key: .name, order: .descending)])
     #expect(byNameDescending.map(\.name) == ["dirB", "dirA", "b.txt", "a.txt"])

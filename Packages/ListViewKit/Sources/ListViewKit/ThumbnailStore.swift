@@ -73,8 +73,7 @@ public final class ThumbnailStore {
     /// One QL generation: the callback queue is unspecified → the result rides
     /// through a Sendable box back to the store (main actor).
     private func generateAndFinish(url: URL, key: String, pixelSize: CGSize) async {
-        let result = await withCheckedContinuation {
-            (continuation: CheckedContinuation<SendableImage, Never>) in
+        let result = await withCheckedContinuation { (continuation: CheckedContinuation<SendableImage, Never>) in
             QLThumbnailGenerator.shared.generateBestRepresentation(
                 for: QLThumbnailGenerator.Request(
                     fileAt: url,

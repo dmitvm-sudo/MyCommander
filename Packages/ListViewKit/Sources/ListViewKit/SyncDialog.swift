@@ -54,7 +54,7 @@ final class SyncDialogController: NSObject, NSTableViewDataSource, NSTableViewDe
     private func build() {
         directionPopup.addItems(withTitles: [
             String(localized: "sync.direction.aToB"),
-            String(localized: "sync.direction.bToA"),
+            String(localized: "sync.direction.bToA")
         ])
         directionPopup.target = self
         directionPopup.action = #selector(optionChanged)
@@ -99,7 +99,7 @@ final class SyncDialogController: NSObject, NSTableViewDataSource, NSTableViewDe
             NSTextField(labelWithString: String(localized: "sync.direction")),
             directionPopup,
             mirrorCheck,
-            NSView(),
+            NSView()
         ])
         optionsRow.orientation = .horizontal
 
@@ -113,7 +113,7 @@ final class SyncDialogController: NSObject, NSTableViewDataSource, NSTableViewDe
             layout.trailingAnchor.constraint(equalTo: window.contentView!.trailingAnchor, constant: -12),
             layout.topAnchor.constraint(equalTo: window.contentView!.topAnchor, constant: 12),
             layout.bottomAnchor.constraint(equalTo: window.contentView!.bottomAnchor, constant: -12),
-            scroll.heightAnchor.constraint(equalToConstant: 300),
+            scroll.heightAnchor.constraint(equalToConstant: 300)
         ])
     }
 

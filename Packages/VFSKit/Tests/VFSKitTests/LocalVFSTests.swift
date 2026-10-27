@@ -198,7 +198,7 @@ private func readAll(_ stream: any ByteStream, chunkSize: Int = 64 * 1024) async
     try await writeChunked(vfs, at: ["alpha", "payload.bin"], chunks: [
         expected.prefix(1_000_000),
         expected.dropFirst(1_000_000).prefix(1_000_000),
-        expected.suffix(500_000),
+        expected.suffix(500_000)
     ])
 
     try await vfs.copyContents(

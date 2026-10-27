@@ -289,7 +289,7 @@ struct UnifiedQueueIntegrationTests {
         let expected: Set<Reversal> = [
             .renameBack(at: VFSPath(root: panelID, components: ["trip_01.jpg"]), previousName: "photo1.jpg"),
             .renameBack(at: VFSPath(root: panelID, components: ["trip_02.jpg"]), previousName: "photo2.jpg"),
-            .renameBack(at: VFSPath(root: panelID, components: ["trip_03.md"]), previousName: "notes.md"),
+            .renameBack(at: VFSPath(root: panelID, components: ["trip_03.md"]), previousName: "notes.md")
         ]
         #expect(reversals == expected)
     }

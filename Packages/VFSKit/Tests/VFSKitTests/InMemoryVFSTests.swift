@@ -67,7 +67,7 @@ private func readAll(_ stream: any ByteStream, chunkSize: Int = 64 * 1024) async
     let expected = generatedData(bytes: 2_097_152)
     try await writeChunked(vfs, to: source, chunks: [
         expected.prefix(1_500_000),
-        expected.suffix(expected.count - 1_500_000),
+        expected.suffix(expected.count - 1_500_000)
     ])
 
     try await vfs.copyContents(from: source, to: vfs, target: VFSPath(root: vfs.id, components: ["beta"]))

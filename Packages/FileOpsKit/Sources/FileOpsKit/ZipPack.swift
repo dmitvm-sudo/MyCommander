@@ -147,13 +147,13 @@ public enum ZipPackTask {
     /// Thread-safe byte accumulator shared with the sync add walk.
     private final class ConsumedBytes: @unchecked Sendable {
         private let lock = NSLock()
-        private var value_: Int64 = 0
+        private var stored: Int64 = 0
         var value: Int64 {
             lock.lock()
             defer { lock.unlock() }
-            return value_
+            return stored
         }
-        func add(_ bytes: Int64) { lock.lock(); value_ += bytes; lock.unlock() }
+        func add(_ bytes: Int64) { lock.lock(); stored += bytes; lock.unlock() }
     }
 
     /// Adds ONE top-level source (file/subtree/symlink) to the archive. File

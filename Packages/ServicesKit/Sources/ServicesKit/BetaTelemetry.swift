@@ -52,10 +52,10 @@ public final class BetaTelemetryStore {
         if #available(macOS 13.0, *) {
             support = URL.applicationSupportDirectory
         } else {
-            support = try! FileManager.default.url(
+            support = (try? FileManager.default.url(
                 for: .applicationSupportDirectory, in: .userDomainMask,
                 appropriateFor: nil, create: true
-            )
+            )) ?? URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
         }
         return support
             .appendingPathComponent("MyCommander", isDirectory: true)
@@ -115,7 +115,7 @@ public final class BetaTelemetryStore {
         }
         sessions.append(BetaSession(start: date.timeIntervalSince1970))
         if dirty {
-            saveSessions(Cap(sessions))
+            saveSessions(capped(sessions))
         } else {
             // append-only fast path: suffix already respects the cap.
             saveSessions(Array(sessions.suffix(Self.sessionCap)))
@@ -228,7 +228,7 @@ public final class BetaTelemetryStore {
 
     private static let sessionCap = 500
 
-    private func Cap(_ sessions: [BetaSession]) -> [BetaSession] {
+    private func capped(_ sessions: [BetaSession]) -> [BetaSession] {
         Array(sessions.suffix(Self.sessionCap))
     }
 }

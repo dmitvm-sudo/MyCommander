@@ -162,14 +162,14 @@ final class OnboardingFlow: NSObject {
         stack.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             stack.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            stack.trailingAnchor.constraint(equalTo: container.trailingAnchor)
         ])
         window.contentView?.addSubview(container)
         NSLayoutConstraint.activate([
             container.leadingAnchor.constraint(equalTo: window.contentView!.leadingAnchor, constant: 20),
             container.trailingAnchor.constraint(equalTo: window.contentView!.trailingAnchor, constant: -20),
             container.topAnchor.constraint(equalTo: window.contentView!.topAnchor, constant: 20),
-            container.bottomAnchor.constraint(equalTo: window.contentView!.bottomAnchor, constant: -20),
+            container.bottomAnchor.constraint(equalTo: window.contentView!.bottomAnchor, constant: -20)
         ])
 
         let controller = NSWindowController(window: window)

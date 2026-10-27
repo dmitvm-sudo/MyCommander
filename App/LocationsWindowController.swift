@@ -75,7 +75,7 @@ final class LocationsWindowController: NSWindowController, NSTableViewDataSource
         let slotLabel = NSTextField(labelWithString: String(localized: "locations.slot"))
         slotPopup.addItems(withTitles: [
             String(localized: "locations.slot.none"),
-            "1", "2", "3", "4", "5", "6", "7", "8", "9",
+            "1", "2", "3", "4", "5", "6", "7", "8", "9"
         ])
         slotPopup.target = self
         slotPopup.action = #selector(slotChanged(_:))
@@ -100,7 +100,7 @@ final class LocationsWindowController: NSWindowController, NSTableViewDataSource
             stack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -14),
             bookmarkScroll.heightAnchor.constraint(equalToConstant: 150),
             recentsScroll.heightAnchor.constraint(equalToConstant: 110),
-            bookmarkScroll.widthAnchor.constraint(equalTo: recentsScroll.widthAnchor),
+            bookmarkScroll.widthAnchor.constraint(equalTo: recentsScroll.widthAnchor)
         ])
     }
 

@@ -57,7 +57,7 @@ struct ZipPackTests {
         let target = VFSPath(root: vfs.id)
         let sources = [
             VFSPath(root: vfs.id, components: ["a.txt"]),
-            VFSPath(root: vfs.id, components: ["sub"]),
+            VFSPath(root: vfs.id, components: ["sub"])
         ]
         let plan = try await ZipPackPlanner.planPack(
             sources: sources, into: target, zipName: "bundle.zip",
@@ -238,7 +238,7 @@ struct ZipPackTests {
             sources: [
                 VFSPath(root: vfs.id, components: ["one.txt"]),
                 VFSPath(root: vfs.id, components: ["two.txt"]),
-                VFSPath(root: vfs.id, components: ["three.txt"]),
+                VFSPath(root: vfs.id, components: ["three.txt"])
             ],
             into: VFSPath(root: vfs.id), zipName: "canceled.zip",
             source: vfs, destination: vfs

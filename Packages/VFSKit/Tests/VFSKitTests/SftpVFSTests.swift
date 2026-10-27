@@ -17,7 +17,6 @@ import VFSKit
 // delete, streaming read (+ seek), the staged write protocol (publish /
 // replace / conflict), errno mapping and the host-key pinning refusal.
 
-
 @Suite("SftpVFS (F-13 core, T-23)")
 struct SftpVFSTests {
 

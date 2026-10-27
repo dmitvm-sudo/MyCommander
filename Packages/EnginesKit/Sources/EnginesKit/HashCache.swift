@@ -88,7 +88,9 @@ public final class HashCache: @unchecked Sendable {
         defer { sqlite3_finalize(statement) }
         guard sqlite3_prepare_v2(
             db,
-            "INSERT INTO hashes (key, mtime, size, digest) VALUES (?1, ?2, ?3, ?4) ON CONFLICT(key) DO UPDATE SET mtime = excluded.mtime, size = excluded.size, digest = excluded.digest;",
+            "INSERT INTO hashes (key, mtime, size, digest) VALUES (?1, ?2, ?3, ?4) "
+                + "ON CONFLICT(key) DO UPDATE SET mtime = excluded.mtime, "
+                + "size = excluded.size, digest = excluded.digest;",
             -1, &statement, nil
         ) == SQLITE_OK else { return }
         sqlite3_bind_text(statement, 1, cacheKey(key), -1, sqliteTransient)

@@ -33,7 +33,7 @@ struct SearchResultVFSTests {
         // Two hits with the SAME name stay addressable (component[0] = index).
         let vfs = SearchResultVFS(hits: [
             .init(item: aHit, origin: origin),
-            .init(item: dupHit, origin: origin),
+            .init(item: dupHit, origin: origin)
         ])
         let folder = try await vfs.listDirectory(at: VFSPath(root: vfs.id))
         #expect(folder.count == 2)

@@ -326,13 +326,11 @@ public final class PanelViewModel {
         switch entry.kind {
         case .directory:
             guard navigationGate?(entry.id) ?? true else { return nil }
-            do { try await loadAndPublish(entry.id); return entry.id }
-            catch { onError?(normalize(error)); return nil }
+            do { try await loadAndPublish(entry.id); return entry.id } catch { onError?(normalize(error)); return nil }
         case .symlink(let target):
             guard let target, target.root == source.id else { return nil }
             guard navigationGate?(target) ?? true else { return nil }
-            do { try await loadAndPublish(target); return target }
-            catch { onError?(normalize(error)); return nil }
+            do { try await loadAndPublish(target); return target } catch { onError?(normalize(error)); return nil }
         case .file, .special:
             guard let openEntryHandler else { return nil }
             if await openEntryHandler(entry) { return entry.id }
@@ -368,8 +366,7 @@ public final class PanelViewModel {
     /// Re-lists the current path (no-op before the very first listing).
     public func reload() async {
         guard let path else { return }
-        do { try await openDirectory(at: path) }
-        catch { onError?(normalize(error)) }
+        do { try await openDirectory(at: path) } catch { onError?(normalize(error)) }
     }
 
     /// `visibleIndices`, recomputed with the DomainKit comparator (dirsFirst

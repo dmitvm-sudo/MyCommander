@@ -106,7 +106,7 @@ public final class ConflictDialogController: NSWindowController, NSTableViewData
             (ColumnID.name, "conflict.column.name"),
             (ColumnID.source, "conflict.column.source"),
             (ColumnID.target, "conflict.column.target"),
-            (ColumnID.resolution, "conflict.column.resolution"),
+            (ColumnID.resolution, "conflict.column.resolution")
         ] {
             let column = NSTableColumn(identifier: identifier)
             column.title = String(localized: String.LocalizationValue(titleKey))
@@ -137,7 +137,7 @@ public final class ConflictDialogController: NSWindowController, NSTableViewData
 
         let allRow = NSStackView(views: [
             NSStackView(views: [allOverwrite, allSkip, allKeepBoth]),
-            NSView(),
+            NSView()
         ])
         allRow.orientation = .horizontal
         let buttons = NSStackView(views: [NSView(), cancelButton, continueButton])
@@ -152,7 +152,7 @@ public final class ConflictDialogController: NSWindowController, NSTableViewData
             layout.trailingAnchor.constraint(equalTo: window.contentView!.trailingAnchor, constant: -12),
             layout.topAnchor.constraint(equalTo: window.contentView!.topAnchor, constant: 12),
             layout.bottomAnchor.constraint(equalTo: window.contentView!.bottomAnchor, constant: -12),
-            scroll.heightAnchor.constraint(equalToConstant: CGFloat(max(120, min(320, 44 * rows.count + 24)))),
+            scroll.heightAnchor.constraint(equalToConstant: CGFloat(max(120, min(320, 44 * rows.count + 24))))
         ])
     }
 
@@ -222,7 +222,7 @@ public final class ConflictDialogController: NSWindowController, NSTableViewData
             popup.addItems(withTitles: [
                 String(localized: "conflict.resolution.overwrite"),
                 String(localized: "conflict.resolution.skip"),
-                String(localized: "conflict.resolution.keepBoth"),
+                String(localized: "conflict.resolution.keepBoth")
             ])
             switch resolutions[row] {
             case .overwrite: popup.selectItem(at: 0)
@@ -247,7 +247,7 @@ public final class ConflictDialogController: NSWindowController, NSTableViewData
         NSLayoutConstraint.activate([
             label.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 4),
             label.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -4),
-            label.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
+            label.centerYAnchor.constraint(equalTo: cell.centerYAnchor)
         ])
         return cell
     }

@@ -1,1 +1,14 @@
 --swiftversion 6.0
+# SwiftFormat (0.64) — откалиброванный вайтлист (2026-10-27, урок в docs/SDD/12):
+# фабричный полный набор требует массового реформатирования (136/153 файлов) —
+# до бет-кода нарушил бы диф-изоляцию. Гейт в силе на отобранных правилах,
+# дающих нулевой churn сегодня; расширение набора (sortImports, wrap* и пр.) —
+# послебетовый backlog.
+--disable all
+--enable duplicateImports
+--enable semicolons
+--enable elseOnSameLine
+--enable linebreakAtEndOfFile
+--enable redundantParens
+--enable trailingClosures
+--enable spaceAroundParens

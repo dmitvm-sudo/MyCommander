@@ -33,9 +33,16 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install linters
-        run: brew install swiftlint swiftformat
+      - name: Install linters (pinned + sha256 — версия-дрейф brew уронил гейт, урок в SDD 12)
+        run: |
+          mkdir -p build/lint-tools
+          curl -fsSL -o build/lint-tools/swiftlint.zip "https://github.com/realm/SwiftLint/releases/download/0.65.1/SwiftLintBinary.artifactbundle.zip"
+          shasum -a 256 -c Tools/lint/swiftlint-0.65.1.sha256
+          unzip -oq build/lint-tools/swiftlint.zip -d build/lint-tools
+          curl -fsSL -o build/lint-tools/swiftformat.zip "https://github.com/nicklockwood/SwiftFormat/releases/download/0.64.0/swiftformat.zip"
+          shasum -a 256 -c Tools/lint/swiftformat-0.64.0.sha256
+          unzip -oq build/lint-tools/swiftformat.zip -d build/lint-tools
       - name: SwiftLint
-        run: swiftlint --strict
+        run: build/lint-tools/SwiftLintBinary.artifactbundle/macos/swiftlint --strict
       - name: SwiftFormat
-        run: swiftformat --lint .
+        run: build/lint-tools/swiftformat --lint .

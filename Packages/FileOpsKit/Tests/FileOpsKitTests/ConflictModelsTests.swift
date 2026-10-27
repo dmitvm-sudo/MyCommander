@@ -28,7 +28,10 @@ private func cmWrite(_ vfs: InMemoryVFS, _ dir: VFSPath, _ name: String, _ bytes
     _ = try await cmWrite(source, sourceDir, "clash.txt", Data("new".utf8))
     _ = try await cmWrite(destination, target, "clash.txt", Data("old".utf8))
 
-    let plan = try await TransferPlanner.planCopy(sources: [sourceDir.appending(component: "clash.txt")], into: target, source: source, destination: destination)
+    let plan = try await TransferPlanner.planCopy(
+        sources: [sourceDir.appending(component: "clash.txt")],
+        into: target, source: source, destination: destination
+    )
     #expect(plan.conflicts.count == 1)
     // The preview needs both sides: the source item is carried by the planner
     // (уточнение T-12), the existing target by .targetExists.

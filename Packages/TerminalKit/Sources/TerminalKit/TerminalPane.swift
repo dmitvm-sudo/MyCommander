@@ -73,7 +73,7 @@ public final class TerminalPane: NSView {
             processView.topAnchor.constraint(equalTo: strip.bottomAnchor),
             processView.leadingAnchor.constraint(equalTo: leadingAnchor),
             processView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            processView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            processView.bottomAnchor.constraint(equalTo: bottomAnchor)
         ])
     }
 

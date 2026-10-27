@@ -74,7 +74,7 @@ final class PackDialogController: NSObject {
             layout.leadingAnchor.constraint(equalTo: window.contentView!.leadingAnchor, constant: 14),
             layout.trailingAnchor.constraint(equalTo: window.contentView!.trailingAnchor, constant: -14),
             layout.topAnchor.constraint(equalTo: window.contentView!.topAnchor, constant: 14),
-            layout.bottomAnchor.constraint(equalTo: window.contentView!.bottomAnchor, constant: -14),
+            layout.bottomAnchor.constraint(equalTo: window.contentView!.bottomAnchor, constant: -14)
         ])
     }
 

@@ -66,7 +66,7 @@ public final class ProgressWindowController: NSWindowController {
         NSLayoutConstraint.activate([
             layout.leadingAnchor.constraint(equalTo: window.contentView!.leadingAnchor, constant: 16),
             layout.trailingAnchor.constraint(equalTo: window.contentView!.trailingAnchor, constant: -16),
-            layout.topAnchor.constraint(equalTo: window.contentView!.topAnchor, constant: 16),
+            layout.topAnchor.constraint(equalTo: window.contentView!.topAnchor, constant: 16)
         ])
 
         consume(events, itemCount: itemCount)

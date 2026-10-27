@@ -285,7 +285,10 @@ private struct Fixture {
     let target = VFSPath(root: fixture.destination.id, components: ["inbox"])
     _ = try await fixture.destination.createDirectory("inbox", in: VFSPath(root: fixture.destination.id))
 
-    let plan = try await TransferPlanner.planCopy(sources: [sourceDir.appending(component: "a.txt")], into: target, source: fixture.source, destination: fixture.destination)
+    let plan = try await TransferPlanner.planCopy(
+        sources: [sourceDir.appending(component: "a.txt")],
+        into: target, source: fixture.source, destination: fixture.destination
+    )
     let (_, events) = await fixture.executor.enqueue(plan, policy: ConflictPolicy())
     var summary: Summary?
     for await event in events {
@@ -415,7 +418,10 @@ private struct Fixture {
     let target = VFSPath(root: fixture.destination.id, components: ["inbox"])
     _ = try await fixture.destination.createDirectory("inbox", in: VFSPath(root: fixture.destination.id))
 
-    let plan = try await TransferPlanner.planCopy(sources: [sourceDir.appending(component: "big.bin")], into: target, source: fixture.source, destination: fixture.destination)
+    let plan = try await TransferPlanner.planCopy(
+        sources: [sourceDir.appending(component: "big.bin")],
+        into: target, source: fixture.source, destination: fixture.destination
+    )
     let (id, events) = await fixture.executor.enqueue(plan, policy: ConflictPolicy())
 
     let collector = EventCollector()
@@ -448,7 +454,10 @@ private struct Fixture {
     let target = VFSPath(root: fixture.destination.id, components: ["inbox"])
     _ = try await fixture.destination.createDirectory("inbox", in: VFSPath(root: fixture.destination.id))
 
-    let plan = try await TransferPlanner.planCopy(sources: [sourceDir.appending(component: "medium.bin")], into: target, source: fixture.source, destination: fixture.destination)
+    let plan = try await TransferPlanner.planCopy(
+        sources: [sourceDir.appending(component: "medium.bin")],
+        into: target, source: fixture.source, destination: fixture.destination
+    )
     let (id, events) = await fixture.executor.enqueue(plan, policy: ConflictPolicy())
 
     let collector = EventCollector()
@@ -589,7 +598,10 @@ private func put(_ vfs: InMemoryVFS, _ dir: VFSPath, _ name: String, _ bytes: Da
     let target = VFSPath(root: fixture.destination.id, components: ["inbox"])
     _ = try await fixture.destination.createDirectory("inbox", in: VFSPath(root: fixture.destination.id))
 
-    let plan = try await TransferPlanner.planCopy(sources: [sourceDir.appending(component: "j.txt")], into: target, source: fixture.source, destination: fixture.destination)
+    let plan = try await TransferPlanner.planCopy(
+        sources: [sourceDir.appending(component: "j.txt")],
+        into: target, source: fixture.source, destination: fixture.destination
+    )
     let (_, events) = await fixture.executor.enqueue(plan, policy: ConflictPolicy())
     for await _ in events {}
 

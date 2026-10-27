@@ -36,13 +36,13 @@ private func diffItem(
     let old = [
         diffItem(root: root, name: "a.txt"),
         diffItem(root: root, name: "b.txt"),
-        diffItem(root: root, name: "c.txt"),
+        diffItem(root: root, name: "c.txt")
     ]
     // new: b with changed size (updated), a unchanged, d added; c is gone.
     let new = [
         diffItem(root: root, name: "b.txt", size: 99),
         diffItem(root: root, name: "a.txt"),
-        diffItem(root: root, name: "d.txt"),
+        diffItem(root: root, name: "d.txt")
     ]
 
     let delta = DiffUpdate.diff(old: old, new: new)
@@ -71,7 +71,7 @@ private func diffItem(
     let old = [diffItem(root: root, name: "a.txt")]
     let new = [
         diffItem(root: root, name: "a.txt"),
-        diffItem(root: root, name: "a.txt", size: 2),
+        diffItem(root: root, name: "a.txt", size: 2)
     ]
 
     let delta = DiffUpdate.diff(old: old, new: new)

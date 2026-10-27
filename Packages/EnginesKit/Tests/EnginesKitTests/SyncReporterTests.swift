@@ -249,7 +249,7 @@ struct SyncReporterTests {
         let script = SyncReporter.actionScript(from: report, direction: .aToB, mirror: false)
         #expect(script == [
             SyncAction(kind: .copyAToB, relativeComponents: ["changed.txt"]),
-            SyncAction(kind: .copyAToB, relativeComponents: ["copy-me.txt"]),
+            SyncAction(kind: .copyAToB, relativeComponents: ["copy-me.txt"])
         ])
     }
 
@@ -266,7 +266,7 @@ struct SyncReporterTests {
         #expect(script == [
             SyncAction(kind: .deleteInB, relativeComponents: ["extra-dir"]),
             SyncAction(kind: .deleteInB, relativeComponents: ["extra.txt"]),
-            SyncAction(kind: .copyAToB, relativeComponents: ["kept.txt"]),
+            SyncAction(kind: .copyAToB, relativeComponents: ["kept.txt"])
         ])
     }
 
@@ -280,7 +280,7 @@ struct SyncReporterTests {
         let script = SyncReporter.actionScript(from: report, direction: .aToB, mirror: false)
         #expect(script == [
             SyncAction(kind: .copyAToB, relativeComponents: ["fresh"]),
-            SyncAction(kind: .copyAToB, relativeComponents: ["outside.txt"]),
+            SyncAction(kind: .copyAToB, relativeComponents: ["outside.txt"])
         ])
     }
 

@@ -153,4 +153,3 @@ private func locScanSources(root: URL) -> (plain: Set<String>, interpPrefixes: S
         #expect(matched, "format key without an interpolation site: \(formatKey)")
     }
 }
-

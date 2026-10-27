@@ -78,7 +78,11 @@ public enum DeleteTransaction {
 
         // Depth-first post-order: recurse into subdirectories, then remove
         // the files of this node, then the node itself.
-        let children = (try? fm.contentsOfDirectory(at: url, includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey], options: [])) ?? []
+        let children = (try? fm.contentsOfDirectory(
+            at: url,
+            includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey],
+            options: []
+        )) ?? []
         for child in children {
             try Task.checkCancellation()
             await gate?.waitIfPaused()

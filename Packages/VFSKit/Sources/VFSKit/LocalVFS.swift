@@ -58,7 +58,7 @@ public final class LocalVFS: VFS, @unchecked Sendable {
         .isHiddenKey,
         .fileSizeKey,
         .creationDateKey,
-        .contentModificationDateKey,
+        .contentModificationDateKey
     ]
 
     public func listDirectory(at path: VFSPath) async throws -> [VFSItem] {

@@ -56,7 +56,7 @@ private func visibleNames(of vm: PanelViewModel) -> [String] {
     vm.setItems([
         fixtureItem(root: instance, name: "zebra.txt", size: 1),
         fixtureItem(root: instance, name: "alpha", isDirectory: true),
-        fixtureItem(root: instance, name: "mango.txt", size: 2),
+        fixtureItem(root: instance, name: "mango.txt", size: 2)
     ], at: nil)
 
     #expect(visibleNames(of: vm) == ["alpha", "mango.txt", "zebra.txt"])
@@ -69,7 +69,7 @@ private func visibleNames(of vm: PanelViewModel) -> [String] {
         fixtureItem(root: instance, name: "dirB", isDirectory: true),
         fixtureItem(root: instance, name: "a.txt"),
         fixtureItem(root: instance, name: "b.txt"),
-        fixtureItem(root: instance, name: "c.txt"),
+        fixtureItem(root: instance, name: "c.txt")
     ]
     vm.setItems(items, at: nil)
     let selectedA = items[1].id
@@ -92,7 +92,7 @@ private func visibleNames(of vm: PanelViewModel) -> [String] {
     let instance = viewModelInstance()
     let items = [
         fixtureItem(root: instance, name: "a.txt"),
-        fixtureItem(root: instance, name: "b.txt"),
+        fixtureItem(root: instance, name: "b.txt")
     ]
     vm.setItems(items, at: nil)
     #expect(delta == 1)

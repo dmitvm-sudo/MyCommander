@@ -409,7 +409,7 @@ final class PanelsCoordinator: NSObject {
         let hotSlots: [(CommandID, Int)] = [
             (.hotSlot1, 1), (.hotSlot2, 2), (.hotSlot3, 3),
             (.hotSlot4, 4), (.hotSlot5, 5), (.hotSlot6, 6),
-            (.hotSlot7, 7), (.hotSlot8, 8), (.hotSlot9, 9),
+            (.hotSlot7, 7), (.hotSlot8, 8), (.hotSlot9, 9)
         ]
         for (command, slot) in hotSlots {
             router.register(command) { [weak self] in
@@ -1109,7 +1109,7 @@ final class PanelsCoordinator: NSObject {
             pane.leadingAnchor.constraint(equalTo: segment.leadingAnchor),
             pane.trailingAnchor.constraint(equalTo: segment.trailingAnchor),
             pane.topAnchor.constraint(equalTo: segment.topAnchor),
-            pane.bottomAnchor.constraint(equalTo: segment.bottomAnchor),
+            pane.bottomAnchor.constraint(equalTo: segment.bottomAnchor)
         ])
         terminalPane = pane
         return pane

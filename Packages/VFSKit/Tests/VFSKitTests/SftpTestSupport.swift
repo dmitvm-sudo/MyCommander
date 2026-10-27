@@ -466,18 +466,18 @@ func sfPath(_ vfs: SftpVFS, _ components: String...) -> VFSPath {
 /// name-space; shared by SftpVFSTests and HostKeyPolicyTests).
 final class SFCounter: @unchecked Sendable {
     private let lock = NSLock()
-    private nonisolated(unsafe) var value_ = 0
+    private nonisolated(unsafe) var raw = 0
 
     func increment() {
         lock.lock()
-        value_ += 1
+        raw += 1
         lock.unlock()
     }
 
     var value: Int {
         lock.lock()
         defer { lock.unlock() }
-        return value_
+        return raw
     }
 }
 

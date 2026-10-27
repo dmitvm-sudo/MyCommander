@@ -83,7 +83,7 @@ final class SearchDialogController: NSObject, NSTableViewDataSource, NSTableView
         for (identifier, title, width) in [
             (ColumnID.name, "search.column.name", 320),
             (ColumnID.matches, "search.column.matches", 90),
-            (ColumnID.size, "search.column.size", 110),
+            (ColumnID.size, "search.column.size", 110)
         ] as [(NSUserInterfaceItemIdentifier, String, CGFloat)] {
             let column = NSTableColumn(identifier: identifier)
             column.title = String(localized: String.LocalizationValue(title))
@@ -125,7 +125,7 @@ final class SearchDialogController: NSObject, NSTableViewDataSource, NSTableView
             layout.trailingAnchor.constraint(equalTo: window.contentView!.trailingAnchor, constant: -12),
             layout.topAnchor.constraint(equalTo: window.contentView!.topAnchor, constant: 12),
             layout.bottomAnchor.constraint(equalTo: window.contentView!.bottomAnchor, constant: -12),
-            scroll.heightAnchor.constraint(equalToConstant: 300),
+            scroll.heightAnchor.constraint(equalToConstant: 300)
         ])
     }
 

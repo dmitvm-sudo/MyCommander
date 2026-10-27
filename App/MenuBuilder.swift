@@ -26,14 +26,14 @@ enum MenuBuilder {
             ItemSpec(titleKey: "menu.home", command: .goHome),
             ItemSpec(titleKey: "menu.reload", command: .reloadPanel),
             ItemSpec(titleKey: "menu.connectSftp", command: .connectSftp),
-            ItemSpec(titleKey: "menu.openSettings", command: .openSettings),
+            ItemSpec(titleKey: "menu.openSettings", command: .openSettings)
         ]),
         SectionSpec(titleKey: "menu.tabs", items: [
             ItemSpec(titleKey: "menu.newTab", command: .newTab),
             ItemSpec(titleKey: "menu.closeTab", command: .closeTab),
             ItemSpec(titleKey: "menu.reopenClosedTab", command: .reopenClosedTab),
             ItemSpec(titleKey: "menu.nextTab", command: .nextTab),
-            ItemSpec(titleKey: "menu.previousTab", command: .previousTab),
+            ItemSpec(titleKey: "menu.previousTab", command: .previousTab)
         ]),
         SectionSpec(titleKey: "menu.view", items: [
             ItemSpec(titleKey: "menu.focusLeft", command: .focusLeft),
@@ -45,14 +45,14 @@ enum MenuBuilder {
             ItemSpec(titleKey: "menu.viewColumns", command: .viewColumns),
             ItemSpec(titleKey: "menu.viewThumbnails", command: .viewThumbnails),
             // F-17а (T-14): ⌘L command bar focus.
-            ItemSpec(titleKey: "menu.commandBar", command: .focusCommandBar),
+            ItemSpec(titleKey: "menu.commandBar", command: .focusCommandBar)
         ]),
         SectionSpec(titleKey: "menu.selection", items: [
             ItemSpec(titleKey: "menu.selectAll", command: .selectAll),
             ItemSpec(titleKey: "menu.invertSelection", command: .invertAll),
             ItemSpec(titleKey: "menu.restoreSelection", command: .restoreSelection),
             ItemSpec(titleKey: "menu.selectMasked", command: .selectMasked),
-            ItemSpec(titleKey: "menu.deselectMasked", command: .deselectMasked),
+            ItemSpec(titleKey: "menu.deselectMasked", command: .deselectMasked)
         ]),
         // Operations (T-11/T-13): F-5 file engine menu surface; items appear
         // only when their handler is registered (MenuBuilder contract).
@@ -71,8 +71,8 @@ enum MenuBuilder {
             ItemSpec(titleKey: "menu.itemInfo", command: .itemInfo),
             // F-17 (T-31): embedded terminal (⌃`) and the path paste (⌃⇧V).
             ItemSpec(titleKey: "menu.terminal", command: .toggleTerminal),
-            ItemSpec(titleKey: "menu.insertPath", command: .pastePath),
-        ]),
+            ItemSpec(titleKey: "menu.insertPath", command: .pastePath)
+        ])
     ]
 
     static func build(
@@ -110,14 +110,14 @@ enum MenuBuilder {
                 (CommandID.bookmarkAdd, "menu.bookmarkAdd"),
                 (CommandID.openLocations, "menu.openLocations"),
                 (CommandID.navigateBack, "menu.navigateBack"),
-                (CommandID.navigateForward, "menu.navigateForward"),
+                (CommandID.navigateForward, "menu.navigateForward")
             ] where router.isRegistered(command) {
                 menu.addItem(Self.makeItem(command, titleKey: titleKey, router: router, keymap: keymap))
             }
             let hotSlotCommands: [(CommandID, Int)] = [
                 (.hotSlot1, 1), (.hotSlot2, 2), (.hotSlot3, 3),
                 (.hotSlot4, 4), (.hotSlot5, 5), (.hotSlot6, 6),
-                (.hotSlot7, 7), (.hotSlot8, 8), (.hotSlot9, 9),
+                (.hotSlot7, 7), (.hotSlot8, 8), (.hotSlot9, 9)
             ]
             for (command, slot) in hotSlotCommands where router.isRegistered(command) {
                 let title: String

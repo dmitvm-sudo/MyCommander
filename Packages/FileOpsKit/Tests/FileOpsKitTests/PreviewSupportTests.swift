@@ -25,7 +25,7 @@ private func pvPattern(_ size: Int) -> Data {
 
 /// VFS wrapper handing out plain (non-seekable) streams to exercise the
 /// skip-forward path of the loader.
-private final class pvPlainVFS: VFS, @unchecked Sendable {
+private final class PVPlainVFS: VFS, @unchecked Sendable {
     let inner: InMemoryVFS
 
     init(inner: InMemoryVFS) {
@@ -46,25 +46,25 @@ private final class pvPlainVFS: VFS, @unchecked Sendable {
 
     func openRead(_ path: VFSPath) async throws -> any ByteStream {
         let stream = try await inner.openRead(path)
-        return pvPlainStream(inner: stream)
+        return PVPlainStream(inner: stream)
     }
 
-    private struct pvPlainStream: ByteStream {
+    private struct PVPlainStream: ByteStream {
         let inner: any ByteStream
         var length: Int64 { get async throws { try await inner.length } }
         func readChunk(max: Int) async throws -> Data? { try await inner.readChunk(max: max) }
     }
 }
 
-private struct pvLocalFixture {
+private struct PVLocalFixture {
     let rootURL: URL
     let vfs: LocalVFS
 
-    static func create(name: String) throws -> pvLocalFixture {
+    static func create(name: String) throws -> PVLocalFixture {
         let rootURL = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent(name + "-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: rootURL, withIntermediateDirectories: true)
-        return pvLocalFixture(rootURL: rootURL, vfs: LocalVFS(at: rootURL))
+        return PVLocalFixture(rootURL: rootURL, vfs: LocalVFS(at: rootURL))
     }
 
     var path: (String) -> VFSPath {
@@ -102,7 +102,7 @@ private struct pvLocalFixture {
     let bytes = pvPattern(90 * 1024)
     let file = try await pvPut(vfs, root, "plain.bin", bytes)
 
-    guard let source = await ListerLoader.open(path: file, in: pvPlainVFS(inner: vfs)) else {
+    guard let source = await ListerLoader.open(path: file, in: PVPlainVFS(inner: vfs)) else {
         Issue.record("loader failed")
         return
     }
@@ -113,7 +113,7 @@ private struct pvLocalFixture {
 @Test func pvLoaderReads4GBSparseFileNearEnd() async throws {
     // F-8 acceptance: a 4 GB file «opens instantly» — the loader must work at
     // gigabyte offsets without touching the whole file (APFS sparse bytes).
-    let fixture = try pvLocalFixture.create(name: "pv-sparse")
+    let fixture = try PVLocalFixture.create(name: "pv-sparse")
     let name = "big.bin"
     let total: Int64 = 4_294_967_296
     let url = fixture.rootURL.appendingPathComponent(name)
@@ -135,7 +135,7 @@ private struct pvLocalFixture {
 }
 
 @Test func pvMaterializerDirectURLForLocal() async throws {
-    let fixture = try pvLocalFixture.create(name: "pv-local")
+    let fixture = try PVLocalFixture.create(name: "pv-local")
     let bytes = Data("lister source".utf8)
     let name = "note.txt"
     try bytes.write(to: fixture.rootURL.appendingPathComponent(name))

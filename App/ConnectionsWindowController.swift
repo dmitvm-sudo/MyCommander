@@ -88,7 +88,7 @@ final class ConnectionsWindowController: NSWindowController, NSTableViewDataSour
         let authRow = labeled(String(localized: "connections.auth"), authPopup)
         authPopup.addItems(withTitles: [
             String(localized: "connections.auth.password"),
-            String(localized: "connections.auth.privateKey"),
+            String(localized: "connections.auth.privateKey")
         ])
         authPopup.target = self
         authPopup.action = #selector(authChanged(_:))
@@ -138,7 +138,7 @@ final class ConnectionsWindowController: NSWindowController, NSTableViewDataSour
             hostField.widthAnchor.constraint(equalToConstant: 200),
             portField.widthAnchor.constraint(equalToConstant: 70),
             userField.widthAnchor.constraint(equalToConstant: 200),
-            keyPathField.widthAnchor.constraint(equalToConstant: 210),
+            keyPathField.widthAnchor.constraint(equalToConstant: 210)
         ])
         applyAuthVisibility()
     }

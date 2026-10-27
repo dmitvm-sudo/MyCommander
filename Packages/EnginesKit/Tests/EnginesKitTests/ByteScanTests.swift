@@ -60,7 +60,10 @@ struct ByteScanTests {
         // the next window instead of splitting the line.
         let text = String(repeating: "x", count: 100) + "needle-in-the-middle\n" + String(repeating: "y", count: 100) + "\n"
         for chunkSize in [3, 7, 16] {
-            let hits = try await ByteScan.countMatchingLines(in: stream(text, chunkSize: chunkSize), needle: "needle-in-the-middle", isRegex: false, caseSensitive: true)
+            let hits = try await ByteScan.countMatchingLines(
+                in: stream(text, chunkSize: chunkSize), needle: "needle-in-the-middle",
+                isRegex: false, caseSensitive: true
+            )
             #expect(hits == 1, "chunkSize \(chunkSize)")
         }
     }

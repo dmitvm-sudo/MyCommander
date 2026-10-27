@@ -128,7 +128,7 @@ private func idDate(year: Int, month: Int, day: Int, hour: Int, minute: Int) -> 
 @Test func idDisplayComposeJoinsRows() {
     let fields = [
         InfoField(kind: .name, label: "name", value: "readme.txt"),
-        InfoField(kind: .size, label: "size", value: "12 B"),
+        InfoField(kind: .size, label: "size", value: "12 B")
     ]
     #expect(InfoDisplay.compose(fields) == "name: readme.txt\nsize: 12 B")
 }

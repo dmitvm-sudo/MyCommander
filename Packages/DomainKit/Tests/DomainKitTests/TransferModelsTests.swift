@@ -19,7 +19,7 @@ private let instance = VFSInstanceID(kind: .localDisk, specID: "journal-test")
                 original: VFSPath(root: instance, components: ["bin"]),
                 trashURL: URL(fileURLWithPath: "/tmp/mc-trash/x.bin")
             ),
-            .deleteCreated(path: VFSPath(root: instance, components: ["staged", ".a.mc-partial"])),
+            .deleteCreated(path: VFSPath(root: instance, components: ["staged", ".a.mc-partial"]))
         ]
     )
 

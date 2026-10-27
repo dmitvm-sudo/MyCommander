@@ -86,7 +86,7 @@ public extension Array where Element == VFSItem {
     /// sort carries a 0.8 MB [Int] transient, not a 100k-item snapshot copy).
     /// Stable, so it reproduces `sortedItems` row-for-row.
     func sortedIndices(by criteria: [SortCriteria]) -> [Int] {
-        var indices = Array<Int>(self.indices)
+        var indices = [Int](self.indices)
         indices.sort { itemLess(self[$0], self[$1], by: criteria) }
         return indices
     }

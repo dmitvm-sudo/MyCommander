@@ -197,8 +197,8 @@ public final class InMemoryVFS: VFS, @unchecked Sendable {
         }
     }
 
-    /// Uses the default two-panel copy from the `VFS` extension (DomainKit) —
-    /// no override: the fake delegates bytes through its own `openRead`/writers.
+    // Uses the default two-panel copy from the `VFS` extension (DomainKit) —
+    // no override: the fake delegates bytes through its own `openRead`/writers.
 
     // MARK: §5.5 streams
 
